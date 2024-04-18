@@ -1,0 +1,10 @@
+opencv
+pyserial
+dlib
+face_recognition
+openai
+numpy
+gtts
+playsound
+pytest
+mediapipe
