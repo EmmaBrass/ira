@@ -15,8 +15,6 @@ from individual_interaction import IndivInteraction
 # "interactions": {"no" : 1, "date": "march 3 1908", "outcome": "left before being painted."}
 # }
 
-
-
 # I wonder if in future there could be a way to associate voices with faces, maybe by taking
 # lots of images and assigning a face encoding to a voice encoding or a microphone number...
 # or if in an exhibit, this could be done in a little test booth before entry or something.
@@ -33,8 +31,8 @@ arm_movement = AbstractArmMovements()
 face_recog = FacialRecog()
 cam = Camera()
 
-
-found_faces = []
+found_faces = [] # look at the latest info from facial_recog node 
+# if num_faces = 0, keep looking
 while len(found_faces) == 0:
     arm_movement.scan()
     _, image = cam.read()
@@ -44,10 +42,13 @@ while len(found_faces) == 0:
     # All 3 of these happen in parallel and must be easy to stop relatively quickly 
     found_faces = face_recog.find_faces(image)
 
-
+# if num_faces = 1, then start IndivInteration with this face.
+# (when with a larger crowd, probably won't happen, just keep looking until you find someone who is close enough!
+# So you don't choose someone far away and then try get them to come closer.
 if len(found_faces) == 1:
     # Just start individial interaction session with this one face.
     indiv_interaction = IndivInteraction(found_faces[0])
+# if num_faces > 1 AND largest_face = True, then start IndivInteration with this face.
 else:
     # Decide which face to use.
     use_idx = -1
