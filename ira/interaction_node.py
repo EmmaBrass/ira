@@ -38,6 +38,7 @@ class InteractionNode(Node):
         # Initialise publishers
         self.system_state_publisher = self.create_publisher(String, 'system_state', 10) #TODO create a custom message type for this?
         self.cropped_face_publisher = self.create_publisher(String, 'face_of_interest', 10)
+        self.arm_commands_publisher = self.create_publisher() #TODO arm message type
         self.eye_data_publisher = self.create_publisher(String, 'eye_data', 10) #TODO maybe a seperate timercallback (with a shorter time period)(with a different callback group) for sending lots of eye data v quickly.
         self.gpt_data_publisher = self.create_publisher(String, 'gpt_data', 10)
 
@@ -84,7 +85,7 @@ class InteractionNode(Node):
         Publishes to system_state topic.
         and publishes to other topics if in the appropriate state.
         """
-        self.logger().info('Publishing.')
+        self.logger().info('In timer_callback')
         self.logger().info('Current system state: %s.', self.state_machine.state)
 
         self.system_state_publisher.publish(self.state_machine.state)
@@ -109,34 +110,32 @@ class InteractionNode(Node):
         """
         Method for the 'found_unknown' state of the state machine.
         Check if they are close enough.
-        Start eye tracking for the person of interest.
         """
-
-        # Check how close the face of interest is in the latest frame - if it is still there!
+        # TODO publish to arm to go STILL when a face is found initially.
+        # (then it will centre the face in the interaction state)
         frame_face_objects = self.find_faces()
 
-        if self.face_of_interest in frame_face_objects:
-            
-        else:
+        if self.foi not in frame_face_objects:
+            # FOI has disappeared... back to scanning
             self.state_machine.to_scanning()
-
-
-            # Face is close enough
-            self.state_machine.to_interaction_unknown()
-
-            if self.scan_counter > 2:
-                # Face is too far away and have scanned >2 times already
-                self.scan_counter = 0
-                self.state_machine.to_too_far()
+        else:
+            if self.foi.close == True:
+                # Face is present and close enough
+                self.state_machine.to_interaction_unknown()
             else:
-                # Face is too far away and have scanned <3 times
-                self.state_machine.to_scanning()
+                if self.scan_counter > 2:
+                    # Face is too far away and have scanned >2 times already
+                    self.scan_counter = 0
+                    self.state_machine.to_too_far()
+                else:
+                    # Face is too far away and have scanned <3 times
+                    self.scan_counter += 1
+                    self.state_machine.to_scanning()
 
     def scanning(self):
         """
         Method for the 'scanning' state of the state machine.
         """
-
         frame_face_objects = self.find_faces()
 
         known_list = [face.known for face in frame_face_objects]
@@ -150,7 +149,7 @@ class InteractionNode(Node):
                 if not known and size > max_size:
                     max_size = size
                     max_index = i
-            self.face_of_interest = frame_face_objects[max_index]
+            self.face_of_interest = frame_face_objects[max_index].encoding
             # An unknown face found
             self.state_machine.to_found_unknown()
         else:
@@ -161,7 +160,7 @@ class InteractionNode(Node):
                 if known and size > max_size:
                     max_size = size
                     max_index = i
-            self.face_of_interest = frame_face_objects[max_index]
+            self.face_of_interest = frame_face_objects[max_index].encoding
             # A known face found
             self.state_machine.to_found_known()
 
@@ -173,6 +172,7 @@ class InteractionNode(Node):
         Uses the latest_image delivered to the node.
         Checks if they have an existing Face object and creates one if not.
         Updates all properties of the Face object (known, close, centred, etc.)
+        Updates the FOI if present in the image.
 
         :returns frame_face_objects: list of Face objects foun in the frame.
         """
@@ -215,6 +215,7 @@ class InteractionNode(Node):
                 matches = face_recognition.compare_faces((face.encoding for face in self.all_faces), encoding)
                 # If multiple matches found in self.all_faces, just use the first one.
                 if True in matches:
+                    # Update the properties of the face object
                     first_match_idx = matches.index(True)
                     face = self.all_faces[first_match_idx]
                     face.location = location
@@ -225,7 +226,7 @@ class InteractionNode(Node):
                     face.close = self.check_if_close(image.shape[1], image.shape[0], face.size)
                     frame_face_objects.append(face)
                 else: 
-                    # Create new face object
+                    # Create new face object and fill in its properties
                     new_face = Face(location, size, encoding)
                     new_face.centred = self.check_if_centred(image.shape[1], image.shape[0], new_face.location)
                     new_face.close = self.check_if_close(image.shape[1], image.shape[0], new_face.size)
@@ -233,6 +234,12 @@ class InteractionNode(Node):
                     frame_face_objects.append(new_face)
                     self.all_faces.append(new_face)
                 self.remember_faces()
+
+        # Update the FOI if present in the image
+        for face in frame_face_objects:
+            if self.foi != None and face.encoding == self.foi.encoding:
+                self.foi = face
+                break
 
         return frame_face_objects
 
