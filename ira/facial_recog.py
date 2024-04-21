@@ -71,7 +71,7 @@ class FacialRecog():
             location = [top, right, bottom, left]
             # Don't make a new face if one already exists... 
             # just update attributes of existing object.
-            matches = face_recognition.compare_faces((face.encoding for face in self.all_faces), encoding)
+            matches = face_recognition.compare_faces((face.encoding for face in self.all_faces), encoding) # move this to interaction node?  put ALL this code in interaction node?
             # If a match was found in self.all_faces, just use the first one.
             if True in matches:
                 first_match_idx = matches.index(True)
