@@ -15,29 +15,58 @@ class EyeControl():
         """
         # self.incoming as a way to assess when the default movements need to 
         # stop to execute a special movement.
-        self.incoming = False
+        self.movements = 0
         self.connection = serial.Serial(port=com_port, baudrate=9600, timeout=None)
 
-    def default_movements(self):
+    def default_movement(self):
         """
-        Eye movements performed when no specific movement is required.
+        Random eye movements performed when no specific movement is required.
+        """     
+        x_val = random.randint(0,1023)
+        y_val = random.randint(0,1023)
+        self.connection.write((bytes(f"<{x_val}, {y_val}, 0>", 'utf-8')))
+        self.movements += 1
+        # TODO is this okay or do we need a more gradual transiton between locations?
+        blink_count = random.randint(2,4)
+        if self.movements >= blink_count:
+            # do a blink
+            self.connection.write((bytes(f"<{x_val}, {y_val}, 1>", 'utf-8')))
+            time.sleep(0.15)
+            self.connection.write((bytes(f"<{x_val}, {y_val}, 0>", 'utf-8')))
+            self.movements = 0
+
+    def straight(self):
         """
-        while self.incoming == False:
-            # Do something, wait a variable length of time, do something else.
-            # Maybe will need to change this when threading is implemented.
-            x_val = random.randint(0,1023)
-            y_val = random.randint(0,1023)
-            self.connection.write((bytes("<x_val, y_val, 0>", 'utf-8')))
-            # TODO is this okay or do we need a more gradual transiton between locations?
-            # TODO add in blinking (a human blink is about 0.15 seconds long)
+        Look straight ahead.
+        """
+        x_val = 512
+        y_val = 512
+        self.connection.write((bytes(f"<{x_val}, {y_val}, 0>", 'utf-8')))
+        self.movements += 1
+        blink_count = random.randint(2,4)
+        if self.movements >= blink_count:
+            # do a blink
+            self.connection.write((bytes(f"<{x_val}, {y_val}, 1>", 'utf-8')))
+            time.sleep(0.15)
+            self.connection.write((bytes(f"<{x_val}, {y_val}, 0>", 'utf-8')))
+            self.movements = 0
 
-            sleep_time = random.uniform(0.1, 3)
-            sleep_counter = 0
-            while (sleep_counter < sleep_time) and self.incoming == False:
-                time.sleep(0.05)
-                sleep_counter += 0.05
+    def focus(self, foi_x, foi_y):
+        """
+        Look at the foi
+        """
+        x_val = foi_x
+        y_val = foi_y
+        self.connection.write((bytes(f"<{x_val}, {y_val}, 0>", 'utf-8')))
+        self.movements += 1
+        blink_count = random.randint(2,4)
+        if self.movements >= blink_count:
+            # do a blink
+            self.connection.write((bytes(f"<{x_val}, {y_val}, 1>", 'utf-8')))
+            time.sleep(0.15)
+            self.connection.write((bytes(f"<{x_val}, {y_val}, 0>", 'utf-8')))
+            self.movements = 0
 
-        
     def wide_eyed(self, seconds):
         """
         Expand the eyes for a few seconds for a look of suprise or awe.
@@ -46,41 +75,10 @@ class EyeControl():
         """
         pass
 
-    def sleep(self):
+    def roll(self):
         """
-        Close the eyes.
-        """
-        pass
-
-    def wake_up (self):
-        """
-        Open the eyes.
+        Self-explanatory: do an eye roll.
+        Just one and then default movements.
         """
         pass
 
-    def fast_left_right(self):
-        """
-        Move the eyes rapidly left and right in a suspicious way.
-        """
-        pass
-
-    def eye_roll(self):
-        """
-        Self-explanatory; do an eye roll.
-        """
-        pass
-
-    def up_right(self):
-        """
-        Look up and to the right for a few seconds with some blinking, 
-        as if thinking.
-        """
-        pass
-
-    def stare(self, seconds):
-        """
-        Stare straight forward, with occasional blinking.
-        
-        :param seconds: How many seconds to stare for.
-        """
-        pass

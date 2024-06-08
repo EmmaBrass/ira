@@ -28,42 +28,45 @@ class InterationStateMachine():
 
         { 'trigger': 'to_found_unknown', 'source': 'scanning', 'dest': 'found_unknown'}, #done
         { 'trigger': 'to_found_known', 'source': 'scanning', 'dest': 'found_known'}, #done
+        { 'trigger': 'to_found_noone', 'source': 'scanning', 'dest': 'found_noone'}, #done
+
+        { 'trigger': 'to_scanning', 'source': 'found_noone', 'dest': 'scanning'}, #done
 
         { 'trigger': 'to_say_painted_recently', 'source': 'found_known', 'dest': 'say_painted_recently' },
         { 'trigger': 'to_interaction_known_recent', 'source': 'found_known', 'dest': 'interaction_known_recent' },
-        { 'trigger': 'interaction_known', 'source': 'found_known', 'dest': 'interaction_known' },
-        { 'trigger': 'to_too_far', 'source': 'found_known', 'dest': 'too_far' },
-        { 'trigger': 'to_scanning', 'source': 'found_known', 'dest': 'scanning' },
+        { 'trigger': 'interaction_known', 'source': 'found_known', 'dest': 'interaction_known' }, #done
+        { 'trigger': 'to_too_far', 'source': 'found_known', 'dest': 'too_far' }, #done
+        { 'trigger': 'to_scanning', 'source': 'found_known', 'dest': 'scanning' }, #done
 
-        { 'trigger': 'to_scanning', 'source': 'say_painted_recently', 'dest': 'scanning' },
+        { 'trigger': 'to_scanning', 'source': 'say_painted_recently', 'dest': 'scanning' }, #done
 
-        { 'trigger': 'to_scanning', 'source': 'too_far', 'dest': 'scanning' },
+        { 'trigger': 'to_scanning', 'source': 'too_far', 'dest': 'scanning' }, #done
 
-        { 'trigger': 'to_interaction_unknown', 'source': 'found_unknown', 'dest': 'interaction_unknown' },
-        { 'trigger': 'to_too_far', 'source': 'found_unknown', 'dest': 'too_far' },
-        { 'trigger': 'to_scanning', 'source': 'found_unknown', 'dest': 'scanning' },
+        { 'trigger': 'to_interaction_unknown', 'source': 'found_unknown', 'dest': 'interaction_unknown' }, #done
+        { 'trigger': 'to_too_far', 'source': 'found_unknown', 'dest': 'too_far' }, #done
+        { 'trigger': 'to_scanning', 'source': 'found_unknown', 'dest': 'scanning' }, #done
 
-        { 'trigger': 'to_disappeared', 'source': 'interaction_unknown', 'dest': 'disappeared' },
-        { 'trigger': 'to_painting', 'source': 'interaction_unknown', 'dest': 'painting' },
+        { 'trigger': 'to_disappeared', 'source': 'interaction_unknown', 'dest': 'disappeared' }, #done
+        { 'trigger': 'to_painting', 'source': 'interaction_unknown', 'dest': 'painting' }, #done
 
-        { 'trigger': 'to_disappeared', 'source': 'interaction_known', 'dest': 'disappeared' },
-        { 'trigger': 'to_painting', 'source': 'interaction_known', 'dest': 'painting' },
+        { 'trigger': 'to_disappeared', 'source': 'interaction_known', 'dest': 'disappeared' }, #done
+        { 'trigger': 'to_painting', 'source': 'interaction_known', 'dest': 'painting' }, #done
 
-        { 'trigger': 'to_disappeared', 'source': 'interaction_known_recent', 'dest': 'disappeared' },
-        { 'trigger': 'to_painting', 'source': 'interaction_known_recent', 'dest': 'painting' },
+        { 'trigger': 'to_disappeared', 'source': 'interaction_known_recent', 'dest': 'disappeared' }, #done
+        { 'trigger': 'to_painting', 'source': 'interaction_known_recent', 'dest': 'painting' }, #done
 
-        { 'trigger': 'to_disappeared', 'source': 'disappeared', 'dest': 'disappeared' },
-        { 'trigger': 'to_interaction_returned', 'source': 'disappeared', 'dest': 'interaction_returned' },
-        { 'trigger': 'to_gone', 'source': 'disappeared', 'dest': 'gone' },
+        { 'trigger': 'to_disappeared', 'source': 'disappeared', 'dest': 'disappeared' }, #done
+        { 'trigger': 'to_interaction_returned', 'source': 'disappeared', 'dest': 'interaction_returned' }, #done
+        { 'trigger': 'to_gone', 'source': 'disappeared', 'dest': 'gone' }, #done
         
-        { 'trigger': 'to_scanning', 'source': 'gone', 'dest': 'scanning' },
+        { 'trigger': 'to_scanning', 'source': 'gone', 'dest': 'scanning' }, #done
 
-        { 'trigger': 'to_disappeared', 'source': 'interaction_returned', 'dest': 'disappeared' },
-        { 'trigger': 'to_painting', 'source': 'interaction_returned', 'dest': 'painting' },
+        { 'trigger': 'to_disappeared', 'source': 'interaction_returned', 'dest': 'disappeared' }, #done
+        { 'trigger': 'to_painting', 'source': 'interaction_returned', 'dest': 'painting' }, #done
 
-        { 'trigger': 'to_completed', 'source': 'painting', 'dest': 'completed' },
+        { 'trigger': 'to_completed', 'source': 'painting', 'dest': 'completed' }, #done
 
-        { 'trigger': 'to_scanning', 'source': 'completed', 'dest': 'scanning' },
+        { 'trigger': 'to_scanning', 'source': 'completed', 'dest': 'scanning' }, #done
     ]
 
     def __init__(self):

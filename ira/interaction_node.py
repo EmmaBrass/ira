@@ -11,13 +11,13 @@ from std_msgs.msg import String
 from std_msgs.msg import Int16MultiArray
 
 import cv2, math, time, logging, pickle
+from datetime import datetime
 import numpy as np
 import face_recognition
 from face import Face
 
 from interaction_state_machine import InterationStateMachine
 
-# TODO add in state machine for this node! Using transitions library.
 # TODO may need different callback groups for everything going on here? https://docs.ros.org/en/humble/How-To-Guides/Using-callback-groups.html
 
 class InteractionNode(Node):
@@ -32,15 +32,18 @@ class InteractionNode(Node):
             self.all_faces = pickle.load(f)
 
         self.state_machine = InterationStateMachine()
-        self.face_of_interest = None
+        self.foi = None # face of interest
         self.scan_counter = 0
+        self.disappeared_counter = 0
+        self.noone_counter = 0
+
+        self.seq = 0
+        self.prev_gpt_complete = [True]
+        self.prev_arm_complete = [True]
         
         # Initialise publishers
         self.system_state_publisher = self.create_publisher(String, 'system_state', 10) #TODO create a custom message type for this?
-        self.cropped_face_publisher = self.create_publisher(String, 'face_of_interest', 10)
-        self.arm_commands_publisher = self.create_publisher() #TODO arm message type
-        self.eye_data_publisher = self.create_publisher(String, 'eye_data', 10) #TODO maybe a seperate timercallback (with a shorter time period)(with a different callback group) for sending lots of eye data v quickly.
-        self.gpt_data_publisher = self.create_publisher(String, 'gpt_data', 10)
+        self.cropped_face_publisher = self.create_publisher(String, 'cropped_face', 10)
 
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
@@ -58,16 +61,24 @@ class InteractionNode(Node):
             self.arm_complete_callback, 
             10
         )
+        self.gpt_complete_subscription = self.create_subscription(
+            bool,
+            'gpt_complete', 
+            self.gpt_complete_callback, 
+            10
+        )
+        # Prevent unused variable warnings
         self.latest_image_subscription 
-        self.arm_complete_subscription # prevent unused variable warning
+        self.arm_complete_subscription 
 
     def latest_image_callback(self, msg):
         """
-        Callback function for receving image from camera
+        Callback function for receving image from camera.
+        Loads it in as the latest image.
         """
         # Display the message on the console
         self.logger().debug("Inside lastest_image_callback")
-        self.latest_image = msg.data
+        self.latest_image = msg.data #TODO message format
 
     def arm_complete_subscription(self, msg):
         """
@@ -75,7 +86,25 @@ class InteractionNode(Node):
         """
         # Display the message on the console
         self.logger().debug("Inside arm_completion_callback")
-        # TODO 
+        if msg.seq == self.seq:
+            if msg.complete == True:
+                self.prev_arm_complete[self.seq] == True
+
+    def gpt_complete_subscription(self, msg):
+        """
+        Callback function for receving completion status of a gpt command.
+        """
+        # Display the message on the console
+        self.logger().debug("Inside gpt_completion_callback")
+        if msg.seq == self.seq:
+            if msg.complete == True:
+                self.prev_gpt_complete[self.seq] == True
+
+    def publish_state(self, state: str):
+        for i in range(5):
+            self.system_state_publisher.publish(msg.seq = self.seq, msg.state = state) #TODO gpt data message type! Correctly formatted! seq_id
+        self.prev_arm_complete.append(False)
+        self.prev_gpt_complete.append(False)
 
     def timer_callback(self):
         """
@@ -90,21 +119,109 @@ class InteractionNode(Node):
 
         self.system_state_publisher.publish(self.state_machine.state)
         self.eye_data_publisher.publish()#TODO eye data message type TODO will vary with system state
-        self.gpt_data_publisher.publish()#TODO gpt data message type TODO will vary with system state
+        
+        if self.prev_arm_complete[self.seq] == True and self.prev_gpt_complete[self.seq] == True:
+            self.seq += 1 
+            # Run a function for the given state, to tick the state machine forwards by one.
+            if self.state_machine.state == 'scanning':
+                self.publish_state("scanning")
+                self.scanning()
+            if self.state_machine.state == 'found_noone':
+                self.publish_state("found_noone")
+                self.found_noone()
+            if self.state_machine.state == 'found_unknown':
+                self.publish_state("found_unknown")
+                self.found_unknown()
+            if self.state_machine.state == 'found_known':
+                self.publish_state("found_known")
+                self.found_known()
+            if self.state_machine.state == 'say_painted_recently':
+                self.publish_state("say_painted_recently")
+                self.say_painted_recently()
+            if self.state_machine.state == 'too_far':
+                self.publish_state("too_far")
+                self.too_far()
+            if self.state_machine.state == 'interaction_unknown': #TODO centre the face!
+                self.publish_state("interaction_unknown")
+                self.interaction_unknown()
+            if self.state_machine.state == 'interaction_known': #TODO centre the face!
+                self.publish_state("interaction_known")
+                self.interaction_known()
+            if self.state_machine.state == 'interaction_known_recent': #TODO centre the face!
+                self.publish_state("interaction_known_recent")
+                self.interaction_known_recent()
+            if self.state_machine.state == 'disappeared':
+                self.publish_state("disappeared")
+                self.disappeared()
+            if self.state_machine.state == 'interaction_returned': #TODO centre the face!
+                self.publish_state("interaction_returned")
+                self.interaction_returned()
+            if self.state_machine.state == 'gone':
+                self.publish_state("gone")
+                self.gone()
+            if self.state_machine.state == 'painting' and self.cropped_image_sent == False:
+                self.publish_state("painting")
+                for i in range(5):
+                    self.cropped_face_publisher.publish(self.cropped_face_image) # TODO make cropped face image custom mssage w/ seq_id?
+                    # TODO when a cropped face is received, this triggers the arm to paint.
+                self.cropped_image_sent = True    
+                self.painting()
+            if self.state_machine.state == 'completed':
+                self.publish_state("completed")
+                self.cropped_image_sent == False
+                self.completed()
 
-        # Run a function for the given state, to tick the state machine forwards by one.
-        if self.state_machine.state == 'scanning':
-            self.scanning()
-        if self.state_machine.state == 'found_unknown':
-            self.found_unknown()
+    def scanning(self):
+        """
+        Method for the 'scanning' state of the state machine.
+        """
+        frame_face_objects = self.find_faces()
 
+        known_list = [face.known for face in frame_face_objects]
+        size_list = [face.size for face in frame_face_objects]
 
-        if self.system_state == "painting" and self.cropped_image_sent == False:
-            for i in range(5):
-                self.cropped_face_publisher.publish(self.cropped_face_image) # TODO make cropped face image TODO custom mssage w/ seq_id?
-            self.cropped_image_sent = True       
-        if self.system_state == "finished_painting":
-            self.cropped_image_sent == False
+        if len(frame_face_objects) > 0:
+            self.noone_counter = 0
+            # If there is an unknown face present
+            if False in known_list:
+                max_size = -1
+                max_index = -1
+                # Choose largest unknown face
+                for i, (known, size) in enumerate(zip(known_list, size_list)):
+                    if not known and size > max_size:
+                        max_size = size
+                        max_index = i
+                self.foi= frame_face_objects[max_index]
+                # An unknown face found
+                self.state_machine.to_found_unknown()
+            # If there is no unknown face present
+            else:
+                max_size = -1
+                max_index = -1
+                # Choose largest known face
+                for i, (known, size) in enumerate(zip(known_list, size_list)):
+                    if known and size > max_size:
+                        max_size = size
+                        max_index = i
+                self.foi = frame_face_objects[max_index]
+                # A known face found
+                self.state_machine.to_found_known()
+        else:
+            if self.noone_counter > 5:
+                self.noone_counter = 0
+                self.state_machine.to_found_noone()
+            else:
+                self.noone_counter += 1
+                self.state_machine.to_scanning()
+
+        # TODO move back to scanning if no one, or if this has happened > 5 times, say no one is there.
+
+    def found_noone(self):
+        """
+        Method for if noone can be seen by the robot.
+        Move back to scanning.
+        """
+        self.state_machine.to_scanning()
 
     def found_unknown(self):
         """
@@ -116,11 +233,13 @@ class InteractionNode(Node):
         frame_face_objects = self.find_faces()
 
         if self.foi not in frame_face_objects:
-            # FOI has disappeared... back to scanning
+            # FOI has disappeared... back to 
+            self.scan_counter = 0
             self.state_machine.to_scanning()
         else:
             if self.foi.close == True:
-                # Face is present and close enough
+                # Face is present and close 
+                self.scan_counter = 0
                 self.state_machine.to_interaction_unknown()
             else:
                 if self.scan_counter > 2:
@@ -132,38 +251,183 @@ class InteractionNode(Node):
                     self.scan_counter += 1
                     self.state_machine.to_scanning()
 
-    def scanning(self):
+    def found_known(self):
         """
-        Method for the 'scanning' state of the state machine.
+        Method for the 'found_known' state.
+        Check if painted recently, interacted with recently (but not painted), 
+        painted at some point before, close enough.
         """
+        # TODO LOTS TO DO HERE!!!
+        # Need to be able to check one how long ago the last interaction with
+        # the person was and of what type it is...
+        # Come back to this once the methods for all the interactions and saving them
+        # are written
+        # TODO publish to arm to go STILL when a face is found initially.
+        # (then it will centre the face in the interaction state)
         frame_face_objects = self.find_faces()
 
-        known_list = [face.known for face in frame_face_objects]
-        size_list = [face.size for face in frame_face_objects]
-
-        if False in known_list:
-            max_size = -1
-            max_index = -1
-            # Choose largest unknown face
-            for i, (known, size) in enumerate(zip(known_list, size_list)):
-                if not known and size > max_size:
-                    max_size = size
-                    max_index = i
-            self.face_of_interest = frame_face_objects[max_index].encoding
-            # An unknown face found
-            self.state_machine.to_found_unknown()
+        if self.foi not in frame_face_objects:
+            # FOI has disappeared... back to scanning
+            self.scan_counter = 0
+            self.state_machine.to_scanning()
         else:
-            max_size = -1
-            max_index = -1
-            # Choose largest known face
-            for i, (known, size) in enumerate(zip(known_list, size_list)):
-                if known and size > max_size:
-                    max_size = size
-                    max_index = i
-            self.face_of_interest = frame_face_objects[max_index].encoding
-            # A known face found
-            self.state_machine.to_found_known()
+            if self.foi.close == True:
+                # Face is present and close enough
+                # TODO decide between interaction_known, interaction_known_recent, and say_painted_recently.
+                self.scan_counter = 0
+                for interaction in self.foi.past_interactions:
+                    if interaction.outcome == ''
+                self.state_machine.to_interaction_known()
+            else:
+                if self.scan_counter > 2:
+                    # Face is too far away and have scanned >2 times already
+                    self.scan_counter = 0
+                    self.state_machine.to_too_far()
+                else:
+                    # Face is too far away and have scanned <3 times
+                    self.scan_counter += 1
+                    self.state_machine.to_scanning()
 
+    def say_painted_recently(self):
+        """ 
+        Method for person that has been painted very recently,
+        and hence won't be painted again just yet.
+        Go back to scanning.
+        """
+        self.state_machine.to_scanning()
+
+    def too_far(self):
+        """
+        Method for when a person is too far away.
+        Go back to scanning.
+        """
+        self.state_machine.to_scanning()
+
+    def interaction_unknown(self):
+        """
+        Method for 'interaction_unknown' state.
+        If the person is still around, move forward to doing the painting! (Maybe just after x seconds...)
+        If the person disappears, then move to disappeared state instead of painting.
+        """
+        # find the foi in self.all_faces
+        # update the object with the interaction
+        for face in self.all_faces:
+            if face.encoding == self.foi.encoding:
+                face.add_interaction(datetime.now(), "interaction_unknown")
+
+        frame_face_objects = self.find_faces()
+        if self.foi not in frame_face_objects:
+            # FOI has disappeared... to disappeared state.
+            self.state_machine.to_disappeared()
+        else:
+            self.state_machine.to_painting()
+
+    def interaction_known(self):
+        """
+        Method for 'interaction_known' state.
+        If the person is still around, move to doing the painting!
+        If the person disappears, then move to disappeared state instead of painting.
+        """
+        # find the foi in self.all_faces
+        # update the object with the interaction
+        for face in self.all_faces:
+            if face.encoding == self.foi.encoding:
+                face.add_interaction(datetime.now(), "interaction_known")
+
+        frame_face_objects = self.find_faces()
+        if self.foi not in frame_face_objects:
+            # FOI has disappeared... to disappeared state.
+            self.state_machine.to_disappeared()
+        else:
+            self.state_machine.to_painting()
+
+    def interaction_known_recent(self):
+        """
+        Method for 'interaction_known_recent' state - interacted with before, but not painted.
+        If the person is still around, move forward to doing the painting!
+        If the person disappears, then move to disappeared state instead of painting.
+        """
+        # find the foi in self.all_faces
+        # update the object with the interaction
+        for face in self.all_faces:
+            if face.encoding == self.foi.encoding:
+                face.add_interaction(datetime.now(), "interaction_known_recent")
+
+        frame_face_objects = self.find_faces()
+        if self.foi not in frame_face_objects:
+            # FOI has disappeared... to disappeared state.
+            self.state_machine.to_disappeared()
+        else:
+            self.state_machine.to_painting()
+
+    def disappeared(self):
+        """
+        Method for when the person has disappeared.
+        Say they are disappeared again, the person comes back, or they are gone for good.
+        """
+        frame_face_objects = self.find_faces()
+        if self.foi not in frame_face_objects and self.disappeared_counter >= 1:
+            # FOI is gone and has been twice
+            self.disappeared_counter = 0
+            self.state_machine.to_gone()
+        elif self.foi not in frame_face_objects and self.disappeared_counter < 1:
+            # FOI is gone for the first time
+            self.disappeared_counter += 1
+            self.state_machine.to_disappeared()
+        elif self.foi in frame_face_objects:
+            # FOI has returned
+            self.disappeared_counter = 0
+            self.state_machine.to_interaction_returned()
+
+    def interaction_returned(self):
+        """
+        Method for 'interaction_returned' state - interacted with, then disappered, not returned.
+        If the person is still around, move forward to doing the painting! (Maybe just after x seconds...)
+        If the person disappears, then move to disappeared state instead of painting.
+        """
+        # find the foi in self.all_faces
+        # update the object with the interaction
+        for face in self.all_faces:
+            if face.encoding == self.foi.encoding:
+                face.add_interaction(datetime.now(), "interaction_returned")
+
+        frame_face_objects = self.find_faces()
+        if self.foi not in frame_face_objects:
+            # FOI has disappeared... to disappeared state.
+            self.state_machine.to_disappeared()
+        else:
+            self.state_machine.to_painting()
+
+    def gone(self):
+        """
+        Method for when the person has completely disappearred.
+        Go back to scanning.
+        """
+        # find the foi in self.all_faces
+        # update the object with the interaction
+        for face in self.all_faces:
+            if face.encoding == self.foi.encoding:
+                face.add_interaction(datetime.now(), "gone")
+        self.state_machine.to_scanning()
+
+    def painting(self):
+        """
+        Method for painting the face.
+        Go to completed.
+        """
+        # find the foi in self.all_faces
+        # update the object with the interaction
+        for face in self.all_faces:
+            if face.encoding == self.foi.encoding:
+                face.add_interaction(datetime.now(), "painting")
+        self.state_machine.to_completed()
+
+    def completed(self):
+        """
+        Method for completed.
+        Go back to scanning for the face.
+        """
+        self.state_machine.to_scanning()
 
     def find_faces(self):
         # Take input image from the node and look for faces
@@ -235,7 +499,7 @@ class InteractionNode(Node):
                     self.all_faces.append(new_face)
                 self.remember_faces()
 
-        # Update the FOI if present in the image
+        # Update the FOI if there is one and it is present in the image
         for face in frame_face_objects:
             if self.foi != None and face.encoding == self.foi.encoding:
                 self.foi = face
@@ -310,9 +574,6 @@ class InteractionNode(Node):
         """
         with open('dataset_faces.dat', 'wb') as f:
             pickle.dump(self.all_faces, f)
-
-    
-
 
 
 
