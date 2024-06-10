@@ -1,5 +1,5 @@
 
-from abstract_arm_movements import AbstractArmMovements
+from ira.ira.arm_movements import AbstractArmMovements
 from facial_recog import FacialRecog
 from camera import Camera
 from individual_interaction import IndivInteraction

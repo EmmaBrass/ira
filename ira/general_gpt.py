@@ -53,7 +53,7 @@ class GPT():
                 the image_analysis function to assess the image.",
             "<interaction_known_recent>" : "You will also be provided with an image of the person. \
                 You should respond with a message, saying hi and that you recognise them.  Also that \
-                you have seen them quite recently.  Also call \
+                they disappeared before you could paint them last time!  Also call \
                 the image_analysis function to assess the image.",
             "<disappeared>" : "The person you were just talking to has disappeared! \
                 Express your sadness about this and wonder out loud about where \

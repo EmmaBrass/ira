@@ -19,7 +19,7 @@ import face_recognition
 
 class InterationStateMachine():
     
-    states = ['scanning', 'found_unknown', 'found_known', '','say_painted_recently', 
+    states = ['scanning', 'found_unknown', 'found_known', 'to_found_noone','say_painted_recently', 
               'too_far', 'interaction_unknown', 'interaction_known', 'interaction_known_recent', 
               'disappeared', 'gone', 'interaction_returned', 'painting', 'completed']
     
@@ -32,7 +32,7 @@ class InterationStateMachine():
 
         { 'trigger': 'to_scanning', 'source': 'found_noone', 'dest': 'scanning'}, #done
 
-        { 'trigger': 'to_say_painted_recently', 'source': 'found_known', 'dest': 'say_painted_recently' },
+        { 'trigger': 'to_say_painted_recently', 'source': 'found_known', 'dest': 'say_painted_recently' }, #Done
         { 'trigger': 'to_interaction_known_recent', 'source': 'found_known', 'dest': 'interaction_known_recent' },
         { 'trigger': 'interaction_known', 'source': 'found_known', 'dest': 'interaction_known' }, #done
         { 'trigger': 'to_too_far', 'source': 'found_known', 'dest': 'too_far' }, #done

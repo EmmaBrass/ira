@@ -14,14 +14,13 @@ class Camera():
         camera_name = "Ultra HD 4K"
         command = ['ffmpeg','-f', 'avfoundation','-list_devices','true','-i','""']
         result = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-        cam_id = 0
 
-        # Ensure we are using the right camera.
-        for item in result.stderr.splitlines():
-            print(item)
-            if (camera_name in item):
-                cam_id = int(item.split("[")[2].split(']')[0])
-        self.logger.info("Ultra HD 4K ID is: %s", cam_id)
+        # # Ensure we are using the right camera.
+        # for item in result.stderr.splitlines():
+        #     print(item)
+        #     if (camera_name in item):
+        #         cam_id = int(item.split("[")[2].split(']')[0])
+        # self.logger.info("Ultra HD 4K ID is: %s", cam_id)
 
         cam_id = 4
         self.cam = cv2.VideoCapture(cam_id)

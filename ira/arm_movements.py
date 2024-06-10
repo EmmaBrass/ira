@@ -9,7 +9,7 @@ class ArmMovements():
 
     def scan(self):
         """
-        Move left and right while looking for a face.
+        Move to a new random position within the viewing plane.
         """
         pass #TODO
 

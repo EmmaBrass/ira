@@ -16,8 +16,8 @@ class CameraNode(Node):
         
     def __init__(self):
         super().__init__('camera_node')
-
-        self.logger = logging.getLogger("main_logger")
+        self.declare_parameter('sim', False)
+        self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
         self.camera = Camera()
         self.bridge = CvBridge()
@@ -28,13 +28,15 @@ class CameraNode(Node):
         timer_period = 1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
 
+        self.get_logger().info("Camera node initialised")
+
     
     def timer_callback(self):
         """
         Read from the camera and publish
         an image to the latest_image topic.
         """
-        self.logger().info('In timer_callback')
+        self.get_logger().debug('In timer_callback')
         latest_image = self.camera.read()
         self.latest_image_publisher.publish(self.bridge.cv2_to_imgmsg(latest_image, "bgr8"))
 

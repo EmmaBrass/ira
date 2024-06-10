@@ -11,12 +11,15 @@ import logging
 
 from eye_control import EyeControl
 
+from ira_interfaces.msg import SystemState
+from ira_interfaces.msg import FoiCoord
+
 class EyeNode(Node):
         
     def __init__(self):
         super().__init__('eye_node')
-
-        self.logger = logging.getLogger("main_logger")
+        self.declare_parameter('sim', False)
+        self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
         self.eyes = EyeControl()
 
@@ -28,23 +31,25 @@ class EyeNode(Node):
 
         # Initialise subscribers
         self.system_state_subscription = self.create_subscription(
-            String,
+            SystemState,
             'system_state', 
             self.system_state_callback, 
             10
         )
         self.foi_cooridnates_subscription = self.create_subscription(
-            list, #TODO message type/format
+            FoiCoord,
             'foi_coordinates', 
             self.foi_coordinates_callback, 
             10
         )
+        self.get_logger().info("Eye node initialised")
 
     def foi_coordinates_callback(self, msg):
         """
         Update the coordinates of the face of interest,
         so that the eyes can point towards the face.
         """
+        self.get_logger().debug("In foi_coordinates_callback")
         self.foi_coordinates = [msg.x, msg.y]
 
     def system_state_callback(self, msg):
@@ -52,8 +57,9 @@ class EyeNode(Node):
         Callback function for the system state.
         """
         # Display the message on the console
-        self.logger().debug("Inside system_state_callback")
+        self.get_logger().debug("In system_state_callback")
 
+        # TODO check seq ?
         if msg.state == 'scanning':
             self.eye_state = "default"
         elif msg.state == 'found_noone':
@@ -89,6 +95,7 @@ class EyeNode(Node):
         """
         Every x seconds, update the command being run by the eyes.
         """
+        self.get_logger().debug("In timer_callback")
         if self.eye_state == "default":
             # Just look around randomly
             self.eyes.default_movement()

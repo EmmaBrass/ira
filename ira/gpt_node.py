@@ -12,18 +12,21 @@ import logging
 
 from general_gpt import GPT
 
+from ira_interfaces.msg import GptComplete
+from ira_interfaces.msg import SystemState
+
 class GPTNode(Node):
         
     def __init__(self):
         super().__init__('gpt_node')
-
-        self.logger = logging.getLogger("main_logger")
+        self.declare_parameter('sim', False)
+        self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
         self.gpt = GPT()
         self.state_seq = 0
 
         # Initialise publishers
-        self.gpt_complete_publisher = self.create_publisher(String, 'gpt_complete', 10) #TODO create a custom message type for this?
+        self.gpt_complete_publisher = self.create_publisher(GptComplete, 'gpt_complete', 10) #TODO create a custom message type for this?
 
         # Initialise subscribers
         self.latest_image_subscription = self.create_subscription(
@@ -33,11 +36,13 @@ class GPTNode(Node):
             10
         )
         self.system_state_subscription = self.create_subscription(
-            String,
+            SystemState,
             'system_state',
             self.system_state_callback, 
             10
         )
+
+        self.get_logger().info("GPT node initialised")
 
     def latest_image_callback(self, msg):
         """
@@ -46,15 +51,14 @@ class GPTNode(Node):
         """
         # TODO maybe this needs to be just the cropped FOI instead ?? To comment on the person in particular! 
         # Display the message on the console
-        self.logger().debug("Inside lastest_image_callback")
-        self.latest_image = msg.data
+        self.get_logger().debug("In lastest_image_callback")
+        self.latest_image = msg.data #TOOD format... message is just an image
 
     def system_state_callback(self, msg):
         """
         Callback function for the system state.
         """
-        # Display the message on the console
-        self.logger().debug("Inside system_state_callback")
+        self.get_logger().debug("In system_state_callback")
 
         if msg.seq > self.state_seq:
             self.state_seq = msg.seq
@@ -100,10 +104,12 @@ class GPTNode(Node):
             else:
                 self.gpt_complete(msg.seq)
 
-
     def gpt_complete(self, seq):
+        msg = GptComplete()
+        msg.seq = seq
+        msg.complete = True
         for i in range(5):
-            self.gpt_complete_publisher.publish(msg.seq = seq, msg.complete = True)
+            self.gpt_complete_publisher.publish(msg)
 
 
 def main(args=None):

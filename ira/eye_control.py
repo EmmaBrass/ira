@@ -66,19 +66,3 @@ class EyeControl():
             time.sleep(0.15)
             self.connection.write((bytes(f"<{x_val}, {y_val}, 0>", 'utf-8')))
             self.movements = 0
-
-    def wide_eyed(self, seconds):
-        """
-        Expand the eyes for a few seconds for a look of suprise or awe.
-
-        :param seconds: How many seconds to open wide for.
-        """
-        pass
-
-    def roll(self):
-        """
-        Self-explanatory: do an eye roll.
-        Just one and then default movements.
-        """
-        pass
-

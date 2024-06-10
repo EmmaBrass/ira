@@ -18,14 +18,19 @@ from face import Face
 
 from interaction_state_machine import InterationStateMachine
 
+from ira_interfaces.msg import SystemState
+from ira_interfaces.msg import ArmComplete
+from ira_interfaces.msg import GptComplete
+from ira_interfaces.msg import FoiCoord
+
 # TODO may need different callback groups for everything going on here? https://docs.ros.org/en/humble/How-To-Guides/Using-callback-groups.html
 
 class InteractionNode(Node):
 
     def __init__(self):
         super().__init__('interaction_node')
-
-        self.logger = logging.getLogger("main_logger")
+        self.declare_parameter('sim', False)
+        self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
         # Load known face objects from .dat file
         with open('dataset_faces.dat', 'rb') as f:
@@ -42,8 +47,9 @@ class InteractionNode(Node):
         self.prev_arm_complete = [True]
         
         # Initialise publishers
-        self.system_state_publisher = self.create_publisher(String, 'system_state', 10) #TODO create a custom message type for this?
-        self.cropped_face_publisher = self.create_publisher(String, 'cropped_face', 10)
+        self.system_state_publisher = self.create_publisher(SystemState, 'system_state', 10)
+        self.cropped_face_publisher = self.create_publisher(Image, 'cropped_face', 10)
+        self.foi_coordinates_publisher = self.create_publisher(FoiCoord, 'foi_coordinates', 10) #TODO this isn't published anywhere yet
 
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
@@ -56,13 +62,13 @@ class InteractionNode(Node):
             10
         )
         self.arm_complete_subscription = self.create_subscription(
-            bool,
+            ArmComplete,
             'arm_complete', 
             self.arm_complete_callback, 
             10
         )
         self.gpt_complete_subscription = self.create_subscription(
-            bool,
+            GptComplete,
             'gpt_complete', 
             self.gpt_complete_callback, 
             10
@@ -71,21 +77,22 @@ class InteractionNode(Node):
         self.latest_image_subscription 
         self.arm_complete_subscription 
 
+        self.get_logger().info("Interaction node initialised")
+
     def latest_image_callback(self, msg):
         """
         Callback function for receving image from camera.
         Loads it in as the latest image.
         """
         # Display the message on the console
-        self.logger().debug("Inside lastest_image_callback")
+        self.get_logger().debug("In lastest_image_callback")
         self.latest_image = msg.data #TODO message format
 
     def arm_complete_subscription(self, msg):
         """
         Callback function for receving completion status of an arm command.
         """
-        # Display the message on the console
-        self.logger().debug("Inside arm_completion_callback")
+        self.get_logger().debug("In arm_completion_callback")
         if msg.seq == self.seq:
             if msg.complete == True:
                 self.prev_arm_complete[self.seq] == True
@@ -94,15 +101,18 @@ class InteractionNode(Node):
         """
         Callback function for receving completion status of a gpt command.
         """
-        # Display the message on the console
-        self.logger().debug("Inside gpt_completion_callback")
+        self.get_logger().debug("In gpt_completion_callback")
         if msg.seq == self.seq:
             if msg.complete == True:
                 self.prev_gpt_complete[self.seq] == True
 
     def publish_state(self, state: str):
+        self.get_logger().debug("Publishing system state")
+        msg = SystemState()
+        msg.seq = self.seq
+        msg.state = state
         for i in range(5):
-            self.system_state_publisher.publish(msg.seq = self.seq, msg.state = state) #TODO gpt data message type! Correctly formatted! seq_id
+            self.system_state_publisher.publish(msg)
         self.prev_arm_complete.append(False)
         self.prev_gpt_complete.append(False)
 
@@ -114,11 +124,7 @@ class InteractionNode(Node):
         Publishes to system_state topic.
         and publishes to other topics if in the appropriate state.
         """
-        self.logger().info('In timer_callback')
-        self.logger().info('Current system state: %s.', self.state_machine.state)
-
-        self.system_state_publisher.publish(self.state_machine.state)
-        self.eye_data_publisher.publish()#TODO eye data message type TODO will vary with system state
+        self.get_logger().info('Current system state: %s.', self.state_machine.state)
         
         if self.prev_arm_complete[self.seq] == True and self.prev_gpt_complete[self.seq] == True:
             self.seq += 1 
@@ -141,19 +147,19 @@ class InteractionNode(Node):
             if self.state_machine.state == 'too_far':
                 self.publish_state("too_far")
                 self.too_far()
-            if self.state_machine.state == 'interaction_unknown': #TODO centre the face!
+            if self.state_machine.state == 'interaction_unknown': #TODO centre the face? probably no
                 self.publish_state("interaction_unknown")
                 self.interaction_unknown()
-            if self.state_machine.state == 'interaction_known': #TODO centre the face!
+            if self.state_machine.state == 'interaction_known': #TODO centre the face? no
                 self.publish_state("interaction_known")
                 self.interaction_known()
-            if self.state_machine.state == 'interaction_known_recent': #TODO centre the face!
+            if self.state_machine.state == 'interaction_known_recent': #TODO centre the face? no
                 self.publish_state("interaction_known_recent")
                 self.interaction_known_recent()
             if self.state_machine.state == 'disappeared':
                 self.publish_state("disappeared")
                 self.disappeared()
-            if self.state_machine.state == 'interaction_returned': #TODO centre the face!
+            if self.state_machine.state == 'interaction_returned': #TODO centre the face? no
                 self.publish_state("interaction_returned")
                 self.interaction_returned()
             if self.state_machine.state == 'gone':
@@ -214,8 +220,6 @@ class InteractionNode(Node):
                 self.noone_counter += 1
                 self.state_machine.to_scanning()
 
-        # TODO move back to scanning if no one, or if this has happened > 5 times, say no one is there.
-
     def found_noone(self):
         """
         Method for if noone can be seen by the robot.
@@ -228,8 +232,6 @@ class InteractionNode(Node):
         Method for the 'found_unknown' state of the state machine.
         Check if they are close enough.
         """
-        # TODO publish to arm to go STILL when a face is found initially.
-        # (then it will centre the face in the interaction state)
         frame_face_objects = self.find_faces()
 
         if self.foi not in frame_face_objects:
@@ -257,13 +259,6 @@ class InteractionNode(Node):
         Check if painted recently, interacted with recently (but not painted), 
         painted at some point before, close enough.
         """
-        # TODO LOTS TO DO HERE!!!
-        # Need to be able to check one how long ago the last interaction with
-        # the person was and of what type it is...
-        # Come back to this once the methods for all the interactions and saving them
-        # are written
-        # TODO publish to arm to go STILL when a face is found initially.
-        # (then it will centre the face in the interaction state)
         frame_face_objects = self.find_faces()
 
         if self.foi not in frame_face_objects:
@@ -273,11 +268,24 @@ class InteractionNode(Node):
         else:
             if self.foi.close == True:
                 # Face is present and close enough
-                # TODO decide between interaction_known, interaction_known_recent, and say_painted_recently.
                 self.scan_counter = 0
+                last_painting =  datetime(1900, 1, 1)
+                last_interaction = self.foi.past_interactions[-1]
                 for interaction in self.foi.past_interactions:
-                    if interaction.outcome == ''
-                self.state_machine.to_interaction_known()
+                    if interaction.outcome == 'painting' and interaction.date_time > last_painting:
+                        last_painting = interaction.date_time
+                duration = datetime.now() - last_painting
+                duration_in_s = duration.total_seconds()    
+                hours = divmod(duration_in_s, 3600)[0]    
+                if hours < 3 and last_interaction != 'gone':
+                    # Painted too recently to paint again
+                    self.state_machine.to_say_painted_recently()
+                elif last_interaction == 'gone':
+                    # Interacted with before but most recently disappeared before painting
+                    self.state_machine.to_interaction_known_recent()
+                else:
+                    # Interacted with before
+                    self.state_machine.to_interaction_known()
             else:
                 if self.scan_counter > 2:
                     # Face is too far away and have scanned >2 times already

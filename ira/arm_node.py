@@ -12,12 +12,15 @@ import logging
 
 from arm_movements import ArmMovements
 
+from ira_interfaces.msg import ArmComplete
+from ira_interfaces.msg import SystemState
+
 class ArmNode(Node):
         
     def __init__(self):
-        super().__init__('gpt_node')
-
-        self.logger = logging.getLogger("main_logger")
+        super().__init__('arm_node')
+        self.declare_parameter('sim', False)
+        self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
         self.bridge = CvBridge()
         self.movements = ArmMovements()
@@ -26,7 +29,7 @@ class ArmNode(Node):
         self.arm_state = "scan"
 
         # Initialise publishers
-        self.arm_complete_publisher = self.create_publisher(String, 'arm_complete', 10) #TODO create a custom message type for this?
+        self.arm_complete_publisher = self.create_publisher(ArmComplete, 'arm_complete', 10) #TODO create a custom message type for this?
 
         timer_period = 1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
@@ -39,11 +42,13 @@ class ArmNode(Node):
             10
         )
         self.system_state_subscription = self.create_subscription(
-            String,
+            SystemState,
             'system_state',
             self.system_state_callback, 
             10
         )
+
+        self.get_logger().info("Arm node initialised")
 
         #TODO subscribe to a topic with the cropped face image;
         # on this node, do the processing for turning that into and outline and then 
@@ -53,7 +58,7 @@ class ArmNode(Node):
         """
         Save the most recent cropped foi image.
         """
-        rclpy.loginfo("Receiving cropped face image")
+        self.get_logger().debug("In cropped_face_callback")
         self.cropped_face = self.bridge.imgmsg_to_cv2(msg)
 
     def system_state_callback(self, msg):
@@ -61,75 +66,84 @@ class ArmNode(Node):
         Callback function for the system state.
         """
         # Display the message on the console
-        self.logger().debug("Inside system_state_callback")
-
+        self.get_logger().debug("In system_state_callback")
+        
         if msg.seq > self.state_seq:
             self.state_seq = msg.seq
-            if msg.state == 'scanning':
-                self.arm_state = "scan" # move around at random
+            if self.sim_mode:
                 self.arm_complete(msg.seq)
-            if msg.state == 'found_noone':
-                self.arm_state = "stop" # stop moving
-                self.arm_complete(msg.seq)
-            if msg.state == 'found_unknown':
-                self.arm_state = "stop"
-                self.arm_complete(msg.seq)
-            if msg.state == 'found_known':
-                self.arm_state = "stop"
-                self.arm_complete(msg.seq)
-            if msg.state == 'say_painted_recently':
-                self.arm_state = "stop"
-                self.arm_complete(msg.seq)
-            if msg.state == 'too_far':
-                self.arm_state = "scan"
-                self.arm_complete(msg.seq)
-            if msg.state == 'interaction_unknown':
-                self.arm_state = "stop"
-                self.arm_complete(msg.seq)
-            if msg.state == 'interaction_known':
-                self.arm_state = "stop"
-                self.arm_complete(msg.seq)
-            if msg.state == 'interaction_known_recent':
-                self.arm_state = "stop"
-                self.arm_complete(msg.seq)
-            if msg.state == 'disappeared':
-                self.arm_state = "stop"
-                self.arm_complete(msg.seq)
-            if msg.state == 'interaction_returned':
-                self.arm_state = "stop"
-                self.arm_complete(msg.seq)
-            if msg.state == 'gone':
-                self.arm_state = "scan"
-                self.arm_complete(msg.seq)
-            if msg.state == 'painting':
-                # TODO function for making the outline and then the arm path
-                self.movements.paint()
-                self.arm_complete(msg.seq)
-            if msg.state == 'completed':
-                self.arm_state = "scan"
-                self.arm_complete(msg.seq)
+            else:
+                if msg.state == 'scanning':
+                    self.arm_state = "scan" # move around at random
+                    self.arm_complete(msg.seq)
+                if msg.state == 'found_noone':
+                    self.arm_state = "stop" # stop moving
+                    self.arm_complete(msg.seq)
+                if msg.state == 'found_unknown':
+                    self.arm_state = "stop"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'found_known':
+                    self.arm_state = "stop"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'say_painted_recently':
+                    self.arm_state = "stop"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'too_far':
+                    self.arm_state = "scan"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'interaction_unknown':
+                    self.arm_state = "stop"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'interaction_known':
+                    self.arm_state = "stop"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'interaction_known_recent':
+                    self.arm_state = "stop"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'disappeared':
+                    self.arm_state = "stop"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'interaction_returned':
+                    self.arm_state = "stop"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'gone':
+                    self.arm_state = "scan"
+                    self.arm_complete(msg.seq)
+                if msg.state == 'painting':
+                    # TODO function for making the outline and then the arm path
+                    self.movements.paint() # TODO the creation of the outline should be done in sim mode
+                    self.arm_complete(msg.seq)
+                if msg.state == 'completed':
+                    self.arm_state = "scan"
+                    self.arm_complete(msg.seq)
 
     def arm_complete(self, seq):
+        self.get_logger().debug("In arm_complete")
+        msg = ArmComplete()
+        msg.seq = seq
+        msg.complete = True
         for i in range(5):
-            self.arm_complete_publisher.publish(msg.seq = seq, msg.complete = True)
+            self.arm_complete_publisher.publish(msg)
 
     def timer_callback(self):
         """
         Depending on the system state, perform different actions.
         """
-        self.logger().info('In timer_callback')
-        if self.arm_state == "scan":
-            # Move around slowly and randomly in viewing plane
-            self.movements.scan()
-        if self.arm_state == "stop":
-            # Don't move
-            self.movements.stop()
+        self.get_logger().debug('In timer_callback')
+        if self.sim_mode:
+            self.get_logger().info('Simulated arm motion')
+        else:
+            if self.arm_state == "scan":
+                # Move around slowly and randomly in viewing plane
+                self.movements.scan()
+            if self.arm_state == "stop":
+                # Don't move
+                self.movements.stop()
         
 
 
 def main(args=None):
     rclpy.init(args=args)
-
     arm_node = ArmNode()
     rclpy.spin(arm_node)
 
