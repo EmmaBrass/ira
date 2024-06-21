@@ -1,9 +1,7 @@
+from ira.image_analysis_gpt import ImageGPT
 from openai import OpenAI
-from image_analysis_gpt import ImageGPT
-from pathlib import Path
 import json
 import os
-import typing
 import time
 from playsound import playsound
 

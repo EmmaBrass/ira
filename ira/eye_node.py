@@ -7,9 +7,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from std_msgs.msg import Int16MultiArray
 
-import logging
-
-from eye_control import EyeControl
+from ira.eye_control import EyeControl
 
 from ira_interfaces.msg import SystemState
 from ira_interfaces.msg import FoiCoord
@@ -19,14 +17,17 @@ class EyeNode(Node):
     def __init__(self):
         super().__init__('eye_node')
         self.declare_parameter('sim', False)
+        self.declare_parameter('eyes_port', '/dev/ttyACM0')
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
+        self.eyes_port = '/dev/ttyACM0'
 
-        self.eyes = EyeControl()
+        self.eyes = EyeControl(com_port=self.eyes_port)
 
         self.eye_state = "default"
         self.foi_coordinates = [512,512]
+        self.image_dimensions = [1023, 1023]
 
-        timer_period = 0.4  # seconds
+        timer_period = 2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
 
         # Initialise subscribers
@@ -43,21 +44,23 @@ class EyeNode(Node):
             10
         )
         self.get_logger().info("Eye node initialised")
+        self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
     def foi_coordinates_callback(self, msg):
         """
         Update the coordinates of the face of interest,
         so that the eyes can point towards the face.
         """
-        self.get_logger().debug("In foi_coordinates_callback")
+        self.get_logger().info("In foi_coordinates_callback")
         self.foi_coordinates = [msg.x, msg.y]
+        self.image_dimensions = [msg.image_x, msg.image_y]
 
     def system_state_callback(self, msg):
         """
         Callback function for the system state.
         """
         # Display the message on the console
-        self.get_logger().debug("In system_state_callback")
+        self.get_logger().info("In system_state_callback")
 
         # TODO check seq ?
         if msg.state == 'scanning':
@@ -95,7 +98,7 @@ class EyeNode(Node):
         """
         Every x seconds, update the command being run by the eyes.
         """
-        self.get_logger().debug("In timer_callback")
+        self.get_logger().info("In timer_callback")
         if self.eye_state == "default":
             # Just look around randomly
             self.eyes.default_movement()
@@ -104,7 +107,12 @@ class EyeNode(Node):
             self.eyes.straight()
         if self.eye_state == "focus":
             # Focus on the foi
-            self.eyes.focus(self.foi_coordinates[0], self.foi_coordinates[1])
+            foi_x = self.map_value(self.foi_coordinates[0],0,self.image_dimensions[0],0,1023)
+            foi_y = self.map_value(self.foi_coordinates[1],0,self.image_dimensions[1],0,1023)
+            self.eyes.focus(foi_x, foi_y)
+
+    def map_value(self, x, in_min, in_max, out_min, out_max):
+        return out_min + ((x - in_min) * (out_max - out_min) / (in_max - in_min))
 
 
 def main(args=None):

@@ -1,4 +1,4 @@
-from ira.face_interaction import FaceInteraction
+from face_interaction import FaceInteraction
 from datetime import datetime
 
 class Face():

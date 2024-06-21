@@ -1,12 +1,9 @@
 from facial_recog import FacialRecog
 from eye_control import EyeControl
-from interaction_gpt import GPT
 from camera import Camera
 from log_config import setup_logger
-import cv2
-import face_recognition
 import numpy as np
-from outline_svg import SVG
+from ira.ira.arm_outline import SVG
 
 
 # Just going to outline the logical flow here for now

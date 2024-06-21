@@ -7,19 +7,18 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from std_msgs.msg import Int16MultiArray
 
-import logging
-import cv2
-
-from camera import Camera
+from ira.camera import Camera
 
 class CameraNode(Node):
         
     def __init__(self):
         super().__init__('camera_node')
         self.declare_parameter('sim', False)
+        self.declare_parameter('cam_id', 4)
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
+        self.cam_port = 4
 
-        self.camera = Camera()
+        self.camera = Camera(port_num=self.cam_port)
         self.bridge = CvBridge()
 
         # Initialise publishers
@@ -29,7 +28,7 @@ class CameraNode(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
 
         self.get_logger().info("Camera node initialised")
-
+        self.get_logger().info(f"Simulation mode: {self.sim_mode}")
     
     def timer_callback(self):
         """

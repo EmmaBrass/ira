@@ -2,7 +2,7 @@
 
 # from log_config import setup_logger
 import cv2
-from outline_svg import SVG
+from ira.ira.arm_outline import Outline
 import time
 
 

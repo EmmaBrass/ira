@@ -1,25 +1,11 @@
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import CameraInfo, Image
-from cv_bridge import CvBridge, CvBridgeError
-
-from std_msgs.msg import String
-from std_msgs.msg import Int16MultiArray
-
-import cv2, math, time, logging, pickle
-
 from transitions import Machine
-from face import Face
-import random, time
-import numpy as np
-import face_recognition
 
 # State machine for the interaction node - keeps track of what state the whole system is in.
 # This is for IRA painting people's faces.
 
 class InterationStateMachine():
     
-    states = ['scanning', 'found_unknown', 'found_known', 'to_found_noone','say_painted_recently', 
+    states = ['scanning', 'found_unknown', 'found_known', 'found_noone','say_painted_recently', 
               'too_far', 'interaction_unknown', 'interaction_known', 'interaction_known_recent', 
               'disappeared', 'gone', 'interaction_returned', 'painting', 'completed']
     
@@ -72,6 +58,7 @@ class InterationStateMachine():
     def __init__(self):
 
         # Initialize the state machine
+
         self.machine = Machine(
             model=self, 
             states=InterationStateMachine.states, 

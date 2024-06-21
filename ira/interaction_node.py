@@ -1,27 +1,22 @@
-# Subscribe to faces_info topic
-# Keep track of what system state we are in
-# Publish state to system_state topic
-
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
 from cv_bridge import CvBridge, CvBridgeError
+bridge = CvBridge()
 
-from std_msgs.msg import String
-from std_msgs.msg import Int16MultiArray
-
-import cv2, math, time, logging, pickle
+import cv2, pickle, os, time
 from datetime import datetime
 import numpy as np
 import face_recognition
-from face import Face
-
-from interaction_state_machine import InterationStateMachine
+from ira.face import Face
+from ira.interaction_state_machine import InterationStateMachine
 
 from ira_interfaces.msg import SystemState
 from ira_interfaces.msg import ArmComplete
 from ira_interfaces.msg import GptComplete
 from ira_interfaces.msg import FoiCoord
+
+from ament_index_python.packages import get_package_share_directory
 
 # TODO may need different callback groups for everything going on here? https://docs.ros.org/en/humble/How-To-Guides/Using-callback-groups.html
 
@@ -33,14 +28,25 @@ class InteractionNode(Node):
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
         # Load known face objects from .dat file
-        with open('dataset_faces.dat', 'rb') as f:
-            self.all_faces = pickle.load(f)
+
+         # Get the path to the data file
+        package_share_directory = get_package_share_directory('ira')
+        data_file_path = os.path.join(package_share_directory, 'resource', 'dataset_faces.dat')
+        
+        # Load the pickled data file
+        with open(data_file_path, 'rb') as file:
+            self.all_faces = pickle.load(file)
+        
+        self.get_logger().info(f"Data from file: {self.all_faces}")
 
         self.state_machine = InterationStateMachine()
         self.foi = None # face of interest
         self.scan_counter = 0
         self.disappeared_counter = 0
         self.noone_counter = 0
+
+        self.latest_image = None
+        self.cropped_image = None
 
         self.seq = 0
         self.prev_gpt_complete = [True]
@@ -78,6 +84,7 @@ class InteractionNode(Node):
         self.arm_complete_subscription 
 
         self.get_logger().info("Interaction node initialised")
+        self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
     def latest_image_callback(self, msg):
         """
@@ -85,29 +92,29 @@ class InteractionNode(Node):
         Loads it in as the latest image.
         """
         # Display the message on the console
-        self.get_logger().debug("In lastest_image_callback")
-        self.latest_image = msg.data #TODO message format
+        self.get_logger().info("In lastest_image_callback")
+        self.latest_image = bridge.imgmsg_to_cv2(msg, 'bgr8')
 
-    def arm_complete_subscription(self, msg):
+    def arm_complete_callback(self, msg):
         """
         Callback function for receving completion status of an arm command.
         """
-        self.get_logger().debug("In arm_completion_callback")
+        self.get_logger().info("In arm_completion_callback")
         if msg.seq == self.seq:
             if msg.complete == True:
-                self.prev_arm_complete[self.seq] == True
+                self.prev_arm_complete[self.seq] = True
 
-    def gpt_complete_subscription(self, msg):
+    def gpt_complete_callback(self, msg):
         """
         Callback function for receving completion status of a gpt command.
         """
-        self.get_logger().debug("In gpt_completion_callback")
+        self.get_logger().info("In gpt_completion_callback")
         if msg.seq == self.seq:
             if msg.complete == True:
-                self.prev_gpt_complete[self.seq] == True
+                self.prev_gpt_complete[self.seq] = True
 
     def publish_state(self, state: str):
-        self.get_logger().debug("Publishing system state")
+        self.get_logger().info("Publishing system state")
         msg = SystemState()
         msg.seq = self.seq
         msg.state = state
@@ -124,7 +131,7 @@ class InteractionNode(Node):
         Publishes to system_state topic.
         and publishes to other topics if in the appropriate state.
         """
-        self.get_logger().info('Current system state: %s.', self.state_machine.state)
+        self.get_logger().info(f'Current system state: {self.state_machine.state}')
         
         if self.prev_arm_complete[self.seq] == True and self.prev_gpt_complete[self.seq] == True:
             self.seq += 1 
@@ -165,22 +172,38 @@ class InteractionNode(Node):
             if self.state_machine.state == 'gone':
                 self.publish_state("gone")
                 self.gone()
-            if self.state_machine.state == 'painting' and self.cropped_image_sent == False:
-                self.publish_state("painting")
+            if self.state_machine.state == 'painting':
                 for i in range(5):
-                    self.cropped_face_publisher.publish(self.cropped_face_image) # TODO make cropped face image custom mssage w/ seq_id?
-                    # TODO when a cropped face is received, this triggers the arm to paint.
-                self.cropped_image_sent = True    
+                    self.cropped_face_publisher.publish(self.cropped_image) 
+                time.sleep(2)
+                self.publish_state("painting")
                 self.painting()
             if self.state_machine.state == 'completed':
                 self.publish_state("completed")
-                self.cropped_image_sent == False
                 self.completed()
+            # Publish coordinates of foi if there is one
+            if self.foi != None:
+                top = self.foi.location[0]
+                right = self.foi.location[1]
+                bottom = self.foi.location[2]
+                left = self.foi.location[3]
+                face_centre_x = (right+left)/2
+                face_centre_y = (top+bottom)/2
+                # Send message
+                msg = FoiCoord()
+                msg.x = face_centre_x
+                msg.y = face_centre_y
+                msg.image_x = self.latest_image.shape[1]
+                msg.image_y = self.latest_image.shape[0]
+                self.foi_coordinates_publisher.publish(msg)
+
 
     def scanning(self):
         """
         Method for the 'scanning' state of the state machine.
         """
+        self.get_logger().info(f'In scanning method')
+
         frame_face_objects = self.find_faces()
 
         known_list = [face.known for face in frame_face_objects]
@@ -213,6 +236,7 @@ class InteractionNode(Node):
                 # A known face found
                 self.state_machine.to_found_known()
         else:
+            self.foi = None
             if self.noone_counter > 5:
                 self.noone_counter = 0
                 self.state_machine.to_found_noone()
@@ -448,70 +472,94 @@ class InteractionNode(Node):
 
         :returns frame_face_objects: list of Face objects foun in the frame.
         """
-
-        image = self.latest_image
+        self.get_logger().info(f'In find_faces method')
         frame_face_objects = []
 
-        # Resize frame of video to 1/4 size for 
-        # faster face recognition processing.
-        small_frame = cv2.resize(image, (0, 0), fx=0.25, fy=0.25)
+        if self.latest_image is not None:
 
-        # Convert the image from BGR color (which OpenCV uses) to RGB color 
-        # (which face_recognition uses).
-        # rgb_small_frame = small_frame[:, :, ::-1]
-        rgb_small_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
-        
-        # Find all the faces and face encodings in the current frame of video.
-        face_locations = face_recognition.face_locations(rgb_small_frame)
-        face_encodings = face_recognition.face_encodings(
-            rgb_small_frame, 
-            face_locations
-        )
+            image = self.latest_image
 
-        if not face_locations:
-            # No faces found - continue scanning
-            self.state_machine.to_scanning()
-        else:
-            # For all faces in the frame, update or make a Face object and 
-            # add it to frame_face_objects
-            for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
-                # Mutiple frame size back up
-                top *= 4
-                right *= 4
-                bottom *= 4
-                left *= 4
-                size = (right-left)*(bottom-top)
-                location = [top, right, bottom, left]
-                # Don't make a new face if one already exists... 
-                # just update attributes of existing object.
-                matches = face_recognition.compare_faces((face.encoding for face in self.all_faces), encoding)
-                # If multiple matches found in self.all_faces, just use the first one.
-                if True in matches:
-                    # Update the properties of the face object
-                    first_match_idx = matches.index(True)
-                    face = self.all_faces[first_match_idx]
-                    face.location = location
-                    face.size = size
-                    face.encoding = encoding
-                    face.known = True
-                    face.centred = self.check_if_centred(image.shape[1], image.shape[0], face.location)
-                    face.close = self.check_if_close(image.shape[1], image.shape[0], face.size)
-                    frame_face_objects.append(face)
-                else: 
-                    # Create new face object and fill in its properties
-                    new_face = Face(location, size, encoding)
-                    new_face.centred = self.check_if_centred(image.shape[1], image.shape[0], new_face.location)
-                    new_face.close = self.check_if_close(image.shape[1], image.shape[0], new_face.size)
-                    new_face.known = False
-                    frame_face_objects.append(new_face)
-                    self.all_faces.append(new_face)
-                self.remember_faces()
+            # Resize frame of video to 1/4 size for 
+            # faster face recognition processing.
+            small_frame = cv2.resize(image, (0, 0), fx=0.25, fy=0.25)
 
-        # Update the FOI if there is one and it is present in the image
-        for face in frame_face_objects:
-            if self.foi != None and face.encoding == self.foi.encoding:
-                self.foi = face
-                break
+            # Convert the image from BGR color (which OpenCV uses) to RGB color 
+            # (which face_recognition uses).
+            # rgb_small_frame = small_frame[:, :, ::-1]
+            rgb_small_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
+            
+            # Find all the faces and face encodings in the current frame of video.
+            face_locations = face_recognition.face_locations(rgb_small_frame)
+            face_encodings = face_recognition.face_encodings(
+                rgb_small_frame, 
+                face_locations
+            )
+
+            if not face_locations:
+                self.get_logger().info(f'No faces found!')
+                # No faces found - continue scanning
+                self.state_machine.to_scanning()
+            else:
+                # For all faces in the frame, update or make a Face object and 
+                # add it to frame_face_objects
+                for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
+                    # Mutiple frame size back up
+                    top *= 4
+                    right *= 4
+                    bottom *= 4
+                    left *= 4
+                    size = (right-left)*(bottom-top)
+                    location = [top, right, bottom, left]
+                    # Don't make a new face if one already exists... 
+                    # just update attributes of existing object.
+                    matches = face_recognition.compare_faces([face.encoding for face in self.all_faces], encoding)
+                    # If multiple matches found in self.all_faces, just use the first one.
+                    if True in matches:
+                        # Update the properties of the face object
+                        first_match_idx = matches.index(True)
+                        face = self.all_faces[first_match_idx]
+                        face.location = location
+                        face.size = size
+                        face.encoding = encoding
+                        face.known = True
+                        face.centred = self.check_if_centred(image.shape[1], image.shape[0], face.location)
+                        face.close = self.check_if_close(image.shape[1], image.shape[0], face.size)
+                        frame_face_objects.append(face)
+                    else: 
+                        # Create new face object and fill in its properties
+                        new_face = Face(location, size, encoding)
+                        new_face.centred = self.check_if_centred(image.shape[1], image.shape[0], new_face.location)
+                        new_face.close = self.check_if_close(image.shape[1], image.shape[0], new_face.size)
+                        new_face.known = False
+                        frame_face_objects.append(new_face)
+                        self.all_faces.append(new_face)
+                    self.remember_faces()
+
+            # Update the FOI if there is one and it is present in the image
+            # Publish the foi coordinates
+            for face in frame_face_objects:
+                if self.foi != None and np.array_equal(face.encoding, self.foi.encoding):
+                    self.foi = face
+                    top = face.location[0]
+                    right = face.location[1]
+                    bottom = face.location[2]
+                    left = face.location[3]
+                    height = bottom-top
+                    width = right-left
+                    cropped_top = top-(height/3)
+                    cropped_bottom = bottom+(height/4)
+                    cropped_left = left-(width/4)
+                    cropped_right = right+(width/4)
+                    if cropped_top < 0:
+                        cropped_top = 0
+                    if cropped_bottom > image.shape[0]:
+                        cropped_bottom = image.shape[0]
+                    if cropped_left < 0:
+                        cropped_left = 0
+                    if cropped_right > image.shape[1]:
+                        cropped_right = image.shape[1]
+                    self.cropped_image = image[cropped_top:cropped_bottom, cropped_left:cropped_right]
+                    break
 
         return frame_face_objects
 
@@ -554,7 +602,7 @@ class InteractionNode(Node):
         if face_centre_y > image_y_half_bottom:
             bottom = True
 
-        if [top,right,bottom,left].all() == False:
+        if all(value == False for value in [top, right, bottom, left]):
             return True
         else:
             return [top,right,bottom,left]
@@ -571,7 +619,7 @@ class InteractionNode(Node):
         """
         whole_image_size = image_width*image_height
 
-        if size >= (whole_image_size/6):
+        if size >= (whole_image_size/8):
             return True
         else:
             return False

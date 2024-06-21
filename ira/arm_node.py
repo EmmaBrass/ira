@@ -8,12 +8,12 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from std_msgs.msg import Int16MultiArray
 
-import logging
-
-from arm_movements import ArmMovements
+from ira.arm_movements import ArmMovements
+from ira.arm_outline import Outline
 
 from ira_interfaces.msg import ArmComplete
 from ira_interfaces.msg import SystemState
+
 
 class ArmNode(Node):
         
@@ -24,6 +24,7 @@ class ArmNode(Node):
 
         self.bridge = CvBridge()
         self.movements = ArmMovements()
+        self.outline = Outline()
         self.cropped_face = None
         self.state_seq = 0
         self.arm_state = "scan"
@@ -49,6 +50,7 @@ class ArmNode(Node):
         )
 
         self.get_logger().info("Arm node initialised")
+        self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
         #TODO subscribe to a topic with the cropped face image;
         # on this node, do the processing for turning that into and outline and then 
@@ -58,7 +60,7 @@ class ArmNode(Node):
         """
         Save the most recent cropped foi image.
         """
-        self.get_logger().debug("In cropped_face_callback")
+        self.get_logger().info("In cropped_face_callback")
         self.cropped_face = self.bridge.imgmsg_to_cv2(msg)
 
     def system_state_callback(self, msg):
@@ -66,7 +68,7 @@ class ArmNode(Node):
         Callback function for the system state.
         """
         # Display the message on the console
-        self.get_logger().debug("In system_state_callback")
+        self.get_logger().info("In system_state_callback")
         
         if msg.seq > self.state_seq:
             self.state_seq = msg.seq
@@ -110,15 +112,15 @@ class ArmNode(Node):
                     self.arm_state = "scan"
                     self.arm_complete(msg.seq)
                 if msg.state == 'painting':
-                    # TODO function for making the outline and then the arm path
-                    self.movements.paint() # TODO the creation of the outline should be done in sim mode
+                    self.outline.find_outline(self.cropped_face)
+                    self.movements.paint() # TODO this needs to somehow get coordinates from the line above
                     self.arm_complete(msg.seq)
                 if msg.state == 'completed':
                     self.arm_state = "scan"
                     self.arm_complete(msg.seq)
 
     def arm_complete(self, seq):
-        self.get_logger().debug("In arm_complete")
+        self.get_logger().info("In arm_complete")
         msg = ArmComplete()
         msg.seq = seq
         msg.complete = True
@@ -129,7 +131,7 @@ class ArmNode(Node):
         """
         Depending on the system state, perform different actions.
         """
-        self.get_logger().debug('In timer_callback')
+        self.get_logger().info('In timer_callback')
         if self.sim_mode:
             self.get_logger().info('Simulated arm motion')
         else:

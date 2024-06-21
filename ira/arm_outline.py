@@ -12,8 +12,13 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+# TODO what do I want to get from here?
+# Need to look into arm commands more
+# A series of straight points along the line that 
+# the robot can move between in linear mode,
+# to make what appears to be a straight line?
 
-class SVG():
+class Outline():
 
     def __init__(self) -> None:
         pass
@@ -87,6 +92,9 @@ class SVG():
         output_image = self.find_facial_features(large_resized_original, large_resized_output)
 
         cv2.imwrite("images/FINAL_image.png", output_image) 
+
+        # TODO this function should RETURN COORDINATES in some form
+        # For the arm to follow to paint the face
 
     def find_selfie_segments(self, image):
         """
@@ -292,54 +300,3 @@ class SVG():
 
         return output_image
                 
-
-    def find_outline_dog(self, image):
-        """
-        OLD - likely won't use.
-        """
-        # Parameters
-        gamma = 0.98
-        phi = 50
-        epsilon = -0.1
-        k = 1.6
-        sigma = 3
-
-        # Read and preprocess the image
-        input_im = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        input_im = input_im.astype(np.float32) / 255.0
-
-        # Apply Gaussian filters
-        g_filtered_im1 = cv2.GaussianBlur(input_im, (0, 0), sigma)
-        g_filtered_im2 = cv2.GaussianBlur(input_im, (0, 0), sigma * k)
-
-        # Difference of Gaussians
-        differenced_im2 = g_filtered_im1 - (gamma * g_filtered_im2)
-
-        # Extended difference of gaussians
-        for i in range(differenced_im2.shape[0]):
-            for j in range(differenced_im2.shape[1]):
-                if differenced_im2[i, j] < epsilon:
-                    differenced_im2[i, j] = 1
-                else:
-                    differenced_im2[i, j] = 1 + np.tanh(phi * (differenced_im2[i, j]))
-
-        # Display XDoG Filtered Image
-        plt.figure(), plt.imshow(differenced_im2, cmap='gray')
-        plt.title('XDoG Filtered Image')
-
-        xdog_filtered_image = differenced_im2
-
-        # Take mean of XDoG Filtered image to use in thresholding operation
-        mean_value = np.mean(xdog_filtered_image)
-
-        # Thresholding
-        xdog_filtered_image[xdog_filtered_image <= mean_value] = 0.0
-        xdog_filtered_image[xdog_filtered_image > mean_value] = 1.0
-
-        # Display Thresholded XDoG Filtered Image
-        plt.figure(), plt.imshow(xdog_filtered_image, cmap='gray')
-        plt.title('Thresholded XDoG Filtered Image')
-
-        # Save XDoG Filtered Image and the thresholded one
-        cv2.imwrite('XDoGFilter.jpg', np.uint8(differenced_im2 * 255))
-        cv2.imwrite('XDoGFilterThresholded.jpg', np.uint8(xdog_filtered_image * 255))
