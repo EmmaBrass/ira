@@ -1,8 +1,10 @@
 from arm_outline import Outline
+from arm_movements import ArmMovements
 from subprocess import PIPE, run
 import cv2
 
 outliner = Outline()
+movements = ArmMovements()
 
 # Load camera video feed.   
 camera_name = "FHD Camera"
@@ -28,5 +30,9 @@ cv2.imshow('Image Window', frame)
 cv2.waitKey(0) 
 cv2.destroyAllWindows()
 
+frame_copy = frame.copy()
 
-outliner.find_contours_coordinates(frame)
+coordinates, image_x, image_y = outliner.find_contours_coordinates(frame)
+#outliner.find_facial_features(frame, frame_copy)
+
+movements.paint_image(coordinates, image_x, image_y)

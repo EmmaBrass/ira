@@ -56,7 +56,7 @@ class ArmMovements():
         
         return offset_x, offset_y, scaling_factor
     
-    def map_coordinates(coordinates, offset_x, offset_y, scaling_factor):
+    def map_coordinates(self, coordinates, offset_x, offset_y, scaling_factor):
         new_coordinates = []
         for contour in coordinates:
             new_contour = []
@@ -77,6 +77,10 @@ class ArmMovements():
         :param image_x: x height of original image
         :param image_y: y width of original image
         """
+
+        # TODO order contours so shortest travel distance between them.
+
+
         if self.vertical == True:
             # Move to origin point for vertical painting: top-left (0,0)
             self.arm.set_servo_angle(servo_id=1, angle=218.2, speed=50, relative=False, wait=True)
@@ -103,13 +107,11 @@ class ArmMovements():
                         if self.light == False:
                             # Lift up the pen (if using a pen)
                             self.arm.set_position(x=10, y=0, z=0, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-                            self.arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-                            # Correct servo 6 angle and do the angle
+                            # Correct servo 6 angle and do the movement
                             self.arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
                             self.arm.set_position(x=0, y=x_rel, z=-y_rel, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
                             # Put the pen down
                             self.arm.set_position(x=-10, y=0, z=0, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-                            self.arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
                         else:
                             # Turn off the light
                             # Do the movement
