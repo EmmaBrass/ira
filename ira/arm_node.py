@@ -112,8 +112,8 @@ class ArmNode(Node):
                     self.arm_state = "scan"
                     self.arm_complete(msg.seq)
                 if msg.state == 'painting':
-                    self.outline.find_outline(self.cropped_face)
-                    self.movements.paint() # TODO this needs to somehow get coordinates from the line above
+                    path_points, image_x, image_y = self.outline.find_contours_coordinates(self.cropped_face)
+                    self.movements.paint(path_points, image_x, image_y)
                     self.arm_complete(msg.seq)
                 if msg.state == 'completed':
                     self.arm_state = "scan"

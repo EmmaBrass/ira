@@ -2,3 +2,4 @@
 ira/images/*
 ira/__pycache__/*
 ira/logs/*
+*.png
