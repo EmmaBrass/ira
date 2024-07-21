@@ -1,4 +1,4 @@
-from image_analysis_gpt import ImageGPT
+from ira.image_analysis_gpt import ImageGPT
 from openai import OpenAI
 import json
 import os

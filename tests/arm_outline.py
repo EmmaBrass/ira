@@ -74,7 +74,7 @@ class Outline():
         padded_img = cv2.copyMakeBorder(img, top_padding, 0, 0, right_padding, cv2.BORDER_CONSTANT)
         return padded_img, [top_padding, right_padding]
     
-    def find_contours_coordinates(self, image):
+    def find_contours_coordinates(self, image, testing=False):
         """
         Finds canny edges image with white lines on black background.
         Finds contours using opencv function.
@@ -82,11 +82,15 @@ class Outline():
         These can then be turned into paths for robot motion.
         """
 
-
         canny_image = self.no_background_canny(image)
         resized_image, padding = self.resize_and_pad(image, 1028, 1028)
         self.find_facial_features(resized_image, canny_image)
         cv2.imwrite('images/with_features.png', canny_image)
+
+        # If testing = True, then use image called TEST in the images folder
+        if testing == True:
+            canny_image = cv2.imread('images/TEST.png', cv2.IMREAD_GRAYSCALE)
+            canny_image, padding = self.resize_and_pad(canny_image, 1028, 1028)
 
         # Threshold the image to ensure it is binary
         _, binary_image = cv2.threshold(canny_image, 127, 255, cv2.THRESH_BINARY)
@@ -240,11 +244,11 @@ class Outline():
         blurred = cv2.GaussianBlur(no_background, (5,5), 0)
 
         # Apply extreme Gaussian blur to the entire image
-        very_blurred = cv2.GaussianBlur(no_background, (9, 9), 0)
+        very_blurred = cv2.GaussianBlur(no_background, (13, 13), 0)
 
         # Combine the blurred image and the original image using the masks
-        blurred_part = cv2.bitwise_and(very_blurred, binary_not_face_mask)
-        original_part = cv2.bitwise_and(blurred, inverse_binary_not_face_mask)
+        blurred_part = cv2.bitwise_and(very_blurred, binary_not_face_mask) # everything but the face (hair, clothes) very blurred
+        original_part = cv2.bitwise_and(blurred, inverse_binary_not_face_mask) # face a bit blurred
         result = cv2.add(blurred_part, original_part)
         cv2.imwrite("images/blurred_not_face.png", blurred_part) 
         cv2.imwrite("images/is_face.png", original_part) 

@@ -83,6 +83,7 @@ class InteractionNode(Node):
         self.latest_image_subscription 
         self.arm_complete_subscription 
 
+        time.sleep(8)
         self.get_logger().info("Interaction node initialised")
         self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
@@ -205,14 +206,18 @@ class InteractionNode(Node):
         self.get_logger().info(f'In scanning method')
 
         frame_face_objects = self.find_faces()
+        self.get_logger().info(f'here1')
 
         known_list = [face.known for face in frame_face_objects]
         size_list = [face.size for face in frame_face_objects]
+        self.get_logger().info(f'frame_face_objects:')
+        self.get_logger().info(len(frame_face_objects))
 
         if len(frame_face_objects) > 0:
             self.noone_counter = 0
             # If there is an unknown face present
             if False in known_list:
+                self.get_logger().info('Unknown face present')
                 max_size = -1
                 max_index = -1
                 # Choose largest unknown face
@@ -225,6 +230,7 @@ class InteractionNode(Node):
                 self.state_machine.to_found_unknown()
             # If there is no unknown face present
             else:
+                self.get_logger().info('No unknown face present')
                 max_size = -1
                 max_index = -1
                 # Choose largest known face
@@ -236,6 +242,7 @@ class InteractionNode(Node):
                 # A known face found
                 self.state_machine.to_found_known()
         else:
+            self.get_logger().info('No face found in image')
             self.foi = None
             if self.noone_counter > 5:
                 self.noone_counter = 0
@@ -546,10 +553,10 @@ class InteractionNode(Node):
                     left = face.location[3]
                     height = bottom-top
                     width = right-left
-                    cropped_top = top-(height/3)
-                    cropped_bottom = bottom+(height/4)
-                    cropped_left = left-(width/4)
-                    cropped_right = right+(width/4)
+                    cropped_top = int(top-(height/3))
+                    cropped_bottom = int(bottom+(height/4))
+                    cropped_left = int(left-(width/4))
+                    cropped_right = int(right+(width/4))
                     if cropped_top < 0:
                         cropped_top = 0
                     if cropped_bottom > image.shape[0]:

@@ -12,6 +12,8 @@ from ira.eye_control import EyeControl
 from ira_interfaces.msg import SystemState
 from ira_interfaces.msg import FoiCoord
 
+import time
+
 class EyeNode(Node):
         
     def __init__(self):
@@ -43,6 +45,8 @@ class EyeNode(Node):
             self.foi_coordinates_callback, 
             10
         )
+
+        time.sleep(10)
         self.get_logger().info("Eye node initialised")
         self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
@@ -107,8 +111,8 @@ class EyeNode(Node):
             self.eyes.straight()
         if self.eye_state == "focus":
             # Focus on the foi
-            foi_x = self.map_value(self.foi_coordinates[0],0,self.image_dimensions[0],0,1023)
-            foi_y = self.map_value(self.foi_coordinates[1],0,self.image_dimensions[1],0,1023)
+            foi_x = self.map_value(self.foi_coordinates[0],0,self.image_dimensions[0],1023,0)
+            foi_y = self.map_value(self.foi_coordinates[1],0,self.image_dimensions[1],1023,0)
             self.eyes.focus(foi_x, foi_y)
 
     def map_value(self, x, in_min, in_max, out_min, out_max):

@@ -9,6 +9,8 @@ from ira.general_gpt import GPT
 from ira_interfaces.msg import GptComplete
 from ira_interfaces.msg import SystemState
 
+import time
+
 class GPTNode(Node):
         
     def __init__(self):
@@ -36,6 +38,7 @@ class GPTNode(Node):
             10
         )
 
+        time.sleep(10)
         self.get_logger().info("GPT node initialised")
         self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
@@ -54,11 +57,14 @@ class GPTNode(Node):
         Callback function for the system state.
         """
         self.get_logger().info("In system_state_callback")
+        self.get_logger().info(f"{msg.seq=}")
+        self.get_logger().info(f"{self.state_seq=}")
 
         if msg.seq > self.state_seq:
+            self.get_logger().info("HERE GPT")
             self.state_seq = msg.seq
             if msg.state == 'scanning':
-                self.get_logger().info("GPT got scanning state")
+                self.get_logger().info("GPT received scanning state")
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_noone':
                 self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_noone>") # TODO is image in right format?

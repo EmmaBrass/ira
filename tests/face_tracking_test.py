@@ -4,6 +4,9 @@ import numpy as np
 import face_recognition
 from subprocess import PIPE, run
 from face import Face
+import time
+import serial
+import random
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -15,6 +18,21 @@ class FaceRecog():
         pass
         self.all_faces = []
         self.foi = None
+        self.connection = serial.Serial(port='/dev/ttyACM0', baudrate=9600, timeout=1)
+        time.sleep(4)
+        self.movements = 0
+
+    def map_value(self, x, in_min, in_max, out_min, out_max):
+        return out_min + ((x - in_min) * (out_max - out_min) / (in_max - in_min))
+
+    def send_command(self, command):
+        self.connection.write((bytes(command, 'utf-8')))
+        time.sleep(0.03)
+        # Read response from Arduino
+        response = self.connection.readline().decode('utf-8').strip()
+        # Flush input buffer to clear any leftover data
+        self.connection.flushInput()
+        self.connection.flushOutput()
 
     def find_faces(self, image):
         # Take input image from the node and look for faces
@@ -104,10 +122,11 @@ class FaceRecog():
                         self.all_faces.append(new_face)
                     self.remember_faces()
 
-            cv2.imshow('faces', img_copy)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            # cv2.imshow('faces', img_copy)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
 
+            # This line only for this testing script:
             self.foi = frame_face_objects[0]
 
             # Update the FOI if there is one and it is present in the image
@@ -134,9 +153,9 @@ class FaceRecog():
                     if cropped_right > image.shape[1]:
                         cropped_right = image.shape[1]
                     self.cropped_image = image[cropped_top:cropped_bottom, cropped_left:cropped_right]
-                    cv2.imshow('Cropped Image', self.cropped_image)
-                    cv2.waitKey(0)
-                    cv2.destroyAllWindows()
+                    # cv2.imshow('Cropped Image', self.cropped_image)
+                    # cv2.waitKey(0)
+                    # cv2.destroyAllWindows()
                     break
 
         return frame_face_objects
@@ -207,13 +226,11 @@ class FaceRecog():
 
 
 
+
 facial_recog = FaceRecog()
 
 # Load camera video feed.   
-camera_name = "FHD Camera"
-command = ['ffmpeg','-f', 'avfoundation','-list_devices','true','-i','""']
-result = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-cam_id = 4
+cam_id = 0
 
 # # Ensure we are using the right camera.
 # for item in result.stderr.splitlines():
@@ -227,12 +244,58 @@ print("Have turned on camera now")
 
 while True:
     print("Taking picture")
+    print("Beginning of while loop")
     for i in range(10):
         ret, frame = cam.read() 
 
-    cv2.imshow('Image Window', frame)
-    cv2.waitKey(0) 
-    cv2.destroyAllWindows()
+    time.sleep(2)
+
+    # cv2.imshow('Image Window', frame)
+    # cv2.waitKey(0) 
+    # cv2.destroyAllWindows()
 
     print("Looking for faces")
     facial_recog.find_faces(frame)
+
+    top = facial_recog.foi.location[0]
+    right = facial_recog.foi.location[1]
+    bottom = facial_recog.foi.location[2]
+    left = facial_recog.foi.location[3]
+    print(f"{top=}")
+    print(f"{right=}")
+    print(f"{bottom=}")
+    print(f"{left=}")
+    av_y = (top+bottom)/2
+    av_x = (left+right)/2
+
+    image_x = frame.shape[1]
+    image_y = frame.shape[0]
+
+    print(f"{av_y=}")
+    print(f"{av_x=}")
+    print(f"{image_y=}")
+    print(f"{image_x=}")
+
+    new_y = facial_recog.map_value(av_y,0,image_y,1000,0)
+    new_x = facial_recog.map_value(av_x,0,image_x,1000,0)
+    print(f"{new_y=}")
+    print(f"{new_x=}")
+    
+    x_val = int(new_x)
+    y_val = int(new_y)
+    command = f"<{x_val}, {y_val}, 0>"
+
+    facial_recog.send_command(command)
+    facial_recog.movements += 1
+    blink_count = random.randint(3,5)
+    if facial_recog.movements >= blink_count:
+        print("Doing a blink")
+        # do a blink
+        command = f"<{x_val}, {y_val}, 1>"
+        facial_recog.send_command(command)
+        time.sleep(0.15)
+        command = f"<{x_val}, {y_val}, 0>"
+        facial_recog.send_command(command)
+        facial_recog.movements = 0
+    time.sleep(random.uniform(0,2.5))
+    print("End of while loop")

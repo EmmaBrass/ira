@@ -9,14 +9,16 @@ from std_msgs.msg import Int16MultiArray
 
 from ira.camera import Camera
 
+import time
+
 class CameraNode(Node):
         
     def __init__(self):
         super().__init__('camera_node')
         self.declare_parameter('sim', False)
-        self.declare_parameter('cam_id', 4)
+        self.declare_parameter('cam_id', 0)
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
-        self.cam_port = 4
+        self.cam_port = 0
 
         self.camera = Camera(port_num=self.cam_port)
         self.bridge = CvBridge()
@@ -27,6 +29,7 @@ class CameraNode(Node):
         timer_period = 1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
 
+        time.sleep(10)
         self.get_logger().info("Camera node initialised")
         self.get_logger().info(f"Simulation mode: {self.sim_mode}")
     

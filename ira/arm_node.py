@@ -14,6 +14,8 @@ from ira.arm_outline import Outline
 from ira_interfaces.msg import ArmComplete
 from ira_interfaces.msg import SystemState
 
+import time
+
 
 class ArmNode(Node):
         
@@ -27,13 +29,9 @@ class ArmNode(Node):
         self.outline = Outline()
         self.cropped_face = None
         self.state_seq = 0
-        self.arm_state = "scan"
 
         # Initialise publishers
         self.arm_complete_publisher = self.create_publisher(ArmComplete, 'arm_complete', 10) #TODO create a custom message type for this?
-
-        timer_period = 1  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
 
         # Initialise subscribers
         self.latest_image_subscription = self.create_subscription(
@@ -49,6 +47,7 @@ class ArmNode(Node):
             10
         )
 
+        time.sleep(3)
         self.get_logger().info("Arm node initialised")
         self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
@@ -76,47 +75,35 @@ class ArmNode(Node):
                 self.arm_complete(msg.seq)
             else:
                 if msg.state == 'scanning':
-                    self.arm_state = "scan" # move around at random
+                    self.movements.scan()
                     self.arm_complete(msg.seq)
                 if msg.state == 'found_noone':
-                    self.arm_state = "stop" # stop moving
                     self.arm_complete(msg.seq)
                 if msg.state == 'found_unknown':
-                    self.arm_state = "stop"
                     self.arm_complete(msg.seq)
                 if msg.state == 'found_known':
-                    self.arm_state = "stop"
                     self.arm_complete(msg.seq)
                 if msg.state == 'say_painted_recently':
-                    self.arm_state = "stop"
                     self.arm_complete(msg.seq)
                 if msg.state == 'too_far':
-                    self.arm_state = "scan"
                     self.arm_complete(msg.seq)
                 if msg.state == 'interaction_unknown':
-                    self.arm_state = "stop"
                     self.arm_complete(msg.seq)
                 if msg.state == 'interaction_known':
-                    self.arm_state = "stop"
                     self.arm_complete(msg.seq)
                 if msg.state == 'interaction_known_recent':
-                    self.arm_state = "stop"
                     self.arm_complete(msg.seq)
                 if msg.state == 'disappeared':
-                    self.arm_state = "stop"
                     self.arm_complete(msg.seq)
                 if msg.state == 'interaction_returned':
-                    self.arm_state = "stop"
                     self.arm_complete(msg.seq)
                 if msg.state == 'gone':
-                    self.arm_state = "scan"
                     self.arm_complete(msg.seq)
                 if msg.state == 'painting':
                     path_points, image_x, image_y = self.outline.find_contours_coordinates(self.cropped_face)
-                    self.movements.paint(path_points, image_x, image_y)
+                    self.movements.paint_image(path_points, image_x, image_y)
                     self.arm_complete(msg.seq)
                 if msg.state == 'completed':
-                    self.arm_state = "scan"
                     self.arm_complete(msg.seq)
 
     def arm_complete(self, seq):
@@ -127,22 +114,7 @@ class ArmNode(Node):
         for i in range(5):
             self.arm_complete_publisher.publish(msg)
 
-    def timer_callback(self):
-        """
-        Depending on the system state, perform different actions.
-        """
-        self.get_logger().info('In timer_callback')
-        if self.sim_mode:
-            self.get_logger().info('Simulated arm motion')
-        else:
-            if self.arm_state == "scan":
-                # Move around slowly and randomly in viewing plane
-                self.movements.scan()
-            if self.arm_state == "stop":
-                # Don't move
-                self.movements.stop()
         
-
 
 def main(args=None):
     rclpy.init(args=args)
