@@ -46,12 +46,13 @@ class ArmMovements():
         self.pot_lift = 70 # distance in mm to lift when going to paint pot
 
         # Start position for HORIZONTAL TODO rename these to distinguish from vertical
-        self.x_start = 596.3
-        self.y_start = 323.2
-        self.z_start = -2
-        self.roll_start = 179.2
-        self.pitch_start = 0.1
-        self.yaw_start = 32.7
+        # 
+        self.x_start = 557.9
+        self.y_start = 375
+        self.z_start = -0.3
+        self.roll_start = 179.3
+        self.pitch_start = 0
+        self.yaw_start = 32
 
     def initial_position(self):
         """
@@ -64,7 +65,7 @@ class ArmMovements():
         # self.arm.set_servo_angle(servo_id=5, angle=20, speed=20, relative=False, wait=True)
         # self.arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
 
-        self.arm.set_position(x=278, y=2.5, z=93.7, roll=179.4, pitch=0, yaw =-0.1, speed=30, wait=True)
+        self.arm.set_position(x=278, y=2.5, z=93.7, roll=179.4, pitch=0, yaw =-0.1, speed=50, wait=True)
         print("Done returning to initial position")
 
     def scan(self):
@@ -238,7 +239,7 @@ class ArmMovements():
             )
             print("Finished setting postion by x y z.")
 
-            # Map the contour coordinates into the vertical drawing space
+            # Map the contour coordinates into the horizontal drawing space
             offset_x, offset_y, scaling_factor = self.resize_and_center_image(
                 image_x, 
                 image_y, 
@@ -340,7 +341,6 @@ class ArmMovements():
                     wait=True
                 )
 
-            
 
     def reload_brush(self):
         """

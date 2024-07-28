@@ -140,46 +140,48 @@ class InteractionNode(Node):
             if self.state_machine.state == 'scanning':
                 self.publish_state("scanning")
                 self.scanning()
-            if self.state_machine.state == 'found_noone':
+                self.get_logger().info(f'HERE1')
+                self.get_logger().info(f'Current system state: {self.state_machine.state}')
+            elif self.state_machine.state == 'found_noone':
                 self.publish_state("found_noone")
                 self.found_noone()
-            if self.state_machine.state == 'found_unknown':
+            elif self.state_machine.state == 'found_unknown':
                 self.publish_state("found_unknown")
                 self.found_unknown()
-            if self.state_machine.state == 'found_known':
+            elif self.state_machine.state == 'found_known':
                 self.publish_state("found_known")
                 self.found_known()
-            if self.state_machine.state == 'say_painted_recently':
+            elif self.state_machine.state == 'say_painted_recently':
                 self.publish_state("say_painted_recently")
                 self.say_painted_recently()
-            if self.state_machine.state == 'too_far':
+            elif self.state_machine.state == 'too_far':
                 self.publish_state("too_far")
                 self.too_far()
-            if self.state_machine.state == 'interaction_unknown': #TODO centre the face? probably no
+            elif self.state_machine.state == 'interaction_unknown': #TODO centre the face? probably no
                 self.publish_state("interaction_unknown")
                 self.interaction_unknown()
-            if self.state_machine.state == 'interaction_known': #TODO centre the face? no
+            elif self.state_machine.state == 'interaction_known': #TODO centre the face? no
                 self.publish_state("interaction_known")
                 self.interaction_known()
-            if self.state_machine.state == 'interaction_known_recent': #TODO centre the face? no
+            elif self.state_machine.state == 'interaction_known_recent': #TODO centre the face? no
                 self.publish_state("interaction_known_recent")
                 self.interaction_known_recent()
-            if self.state_machine.state == 'disappeared':
+            elif self.state_machine.state == 'disappeared':
                 self.publish_state("disappeared")
                 self.disappeared()
-            if self.state_machine.state == 'interaction_returned': #TODO centre the face? no
+            elif self.state_machine.state == 'interaction_returned': #TODO centre the face? no
                 self.publish_state("interaction_returned")
                 self.interaction_returned()
-            if self.state_machine.state == 'gone':
+            elif self.state_machine.state == 'gone':
                 self.publish_state("gone")
                 self.gone()
-            if self.state_machine.state == 'painting':
+            elif self.state_machine.state == 'painting':
                 for i in range(5):
                     self.cropped_face_publisher.publish(self.cropped_image) 
                 time.sleep(2)
                 self.publish_state("painting")
                 self.painting()
-            if self.state_machine.state == 'completed':
+            elif self.state_machine.state == 'completed':
                 self.publish_state("completed")
                 self.completed()
             # Publish coordinates of foi if there is one
@@ -192,11 +194,13 @@ class InteractionNode(Node):
                 face_centre_y = (top+bottom)/2
                 # Send message
                 msg = FoiCoord()
-                msg.x = face_centre_x
-                msg.y = face_centre_y
-                msg.image_x = self.latest_image.shape[1]
-                msg.image_y = self.latest_image.shape[0]
+                msg.x = int(face_centre_x)
+                msg.y = int(face_centre_y)
+                msg.image_x = int(self.latest_image.shape[1])
+                msg.image_y = int(self.latest_image.shape[0])
                 self.foi_coordinates_publisher.publish(msg)
+            self.get_logger().info(f'HERE2')
+            self.get_logger().info(f'Current system state: {self.state_machine.state}')
 
 
     def scanning(self):
@@ -211,7 +215,7 @@ class InteractionNode(Node):
         known_list = [face.known for face in frame_face_objects]
         size_list = [face.size for face in frame_face_objects]
         self.get_logger().info(f'frame_face_objects:')
-        self.get_logger().info(len(frame_face_objects))
+        self.get_logger().info(str(len(frame_face_objects)))
 
         if len(frame_face_objects) > 0:
             self.noone_counter = 0
@@ -226,8 +230,12 @@ class InteractionNode(Node):
                         max_size = size
                         max_index = i
                 self.foi= frame_face_objects[max_index]
-                # An unknown face found
-                self.state_machine.to_found_unknown()
+                try:
+                    self.get_logger().info(f"Current state before transition: {self.state_machine.state}")
+                    self.state_machine.to_found_unknown()
+                    self.get_logger().info(f"Current state after transition: {self.state_machine.state}")
+                except Exception as e:
+                    self.get_logger().error(f"Transition failed: {str(e)}")
             # If there is no unknown face present
             else:
                 self.get_logger().info('No unknown face present')
@@ -240,7 +248,12 @@ class InteractionNode(Node):
                         max_index = i
                 self.foi = frame_face_objects[max_index]
                 # A known face found
-                self.state_machine.to_found_known()
+                try:
+                    self.get_logger().info(f"Current state before transition: {self.state_machine.state}")
+                    self.state_machine.to_found_known()
+                    self.get_logger().info(f"Current state after transition: {self.state_machine.state}")
+                except Exception as e:
+                    self.get_logger().error(f"Transition failed: {str(e)}")
         else:
             self.get_logger().info('No face found in image')
             self.foi = None
@@ -264,22 +277,30 @@ class InteractionNode(Node):
         Check if they are close enough.
         """
         frame_face_objects = self.find_faces()
+        self.get_logger().info(f'HERE3')
 
         if self.foi not in frame_face_objects:
-            # FOI has disappeared... back to 
+            # FOI has disappeared... back to scanning
+            self.get_logger().info(f'HERE4')
             self.scan_counter = 0
             self.state_machine.to_scanning()
+            self.get_logger().info(f'HERE5')
         else:
+            self.get_logger().info(f'HERE6')
             if self.foi.close == True:
+                self.get_logger().info(f'HERE7')
                 # Face is present and close 
                 self.scan_counter = 0
                 self.state_machine.to_interaction_unknown()
             else:
+                self.get_logger().info(f'HERE8')
                 if self.scan_counter > 2:
+                    self.get_logger().info(f'HERE9')
                     # Face is too far away and have scanned >2 times already
                     self.scan_counter = 0
                     self.state_machine.to_too_far()
                 else:
+                    self.get_logger().info(f'HERE10')
                     # Face is too far away and have scanned <3 times
                     self.scan_counter += 1
                     self.state_machine.to_scanning()
@@ -301,10 +322,12 @@ class InteractionNode(Node):
                 # Face is present and close enough
                 self.scan_counter = 0
                 last_painting =  datetime(1900, 1, 1)
-                last_interaction = self.foi.past_interactions[-1]
-                for interaction in self.foi.past_interactions:
-                    if interaction.outcome == 'painting' and interaction.date_time > last_painting:
-                        last_painting = interaction.date_time
+                last_interaction = None
+                if len(self.foi.past_interactions) > 0:
+                    last_interaction = self.foi.past_interactions[-1]
+                    for interaction in self.foi.past_interactions:
+                        if interaction.outcome == 'painting' and interaction.date_time > last_painting:
+                            last_painting = interaction.date_time
                 duration = datetime.now() - last_painting
                 duration_in_s = duration.total_seconds()    
                 hours = divmod(duration_in_s, 3600)[0]    
@@ -351,7 +374,7 @@ class InteractionNode(Node):
         # find the foi in self.all_faces
         # update the object with the interaction
         for face in self.all_faces:
-            if face.encoding == self.foi.encoding:
+            if np.array_equal(face.encoding, self.foi.encoding):
                 face.add_interaction(datetime.now(), "interaction_unknown")
 
         frame_face_objects = self.find_faces()
@@ -370,7 +393,7 @@ class InteractionNode(Node):
         # find the foi in self.all_faces
         # update the object with the interaction
         for face in self.all_faces:
-            if face.encoding == self.foi.encoding:
+            if np.array_equal(face.encoding, self.foi.encoding):
                 face.add_interaction(datetime.now(), "interaction_known")
 
         frame_face_objects = self.find_faces()
@@ -389,7 +412,7 @@ class InteractionNode(Node):
         # find the foi in self.all_faces
         # update the object with the interaction
         for face in self.all_faces:
-            if face.encoding == self.foi.encoding:
+            if np.array_equal(face.encoding, self.foi.encoding):
                 face.add_interaction(datetime.now(), "interaction_known_recent")
 
         frame_face_objects = self.find_faces()
@@ -427,7 +450,7 @@ class InteractionNode(Node):
         # find the foi in self.all_faces
         # update the object with the interaction
         for face in self.all_faces:
-            if face.encoding == self.foi.encoding:
+            if np.array_equal(face.encoding, self.foi.encoding):
                 face.add_interaction(datetime.now(), "interaction_returned")
 
         frame_face_objects = self.find_faces()
@@ -445,7 +468,7 @@ class InteractionNode(Node):
         # find the foi in self.all_faces
         # update the object with the interaction
         for face in self.all_faces:
-            if face.encoding == self.foi.encoding:
+            if np.array_equal(face.encoding, self.foi.encoding):
                 face.add_interaction(datetime.now(), "gone")
         self.state_machine.to_scanning()
 
@@ -457,7 +480,7 @@ class InteractionNode(Node):
         # find the foi in self.all_faces
         # update the object with the interaction
         for face in self.all_faces:
-            if face.encoding == self.foi.encoding:
+            if np.array_equal(face.encoding, self.foi.encoding):
                 face.add_interaction(datetime.now(), "painting")
         self.state_machine.to_completed()
 
@@ -565,7 +588,8 @@ class InteractionNode(Node):
                         cropped_left = 0
                     if cropped_right > image.shape[1]:
                         cropped_right = image.shape[1]
-                    self.cropped_image = image[cropped_top:cropped_bottom, cropped_left:cropped_right]
+                    self.cropped_image_array = image[cropped_top:cropped_bottom, cropped_left:cropped_right]
+                    self.cropped_image = bridge.cv2_to_imgmsg(self.cropped_image_array, encoding="bgr8")
                     break
 
         return frame_face_objects

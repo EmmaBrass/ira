@@ -3,13 +3,15 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
+from cv_bridge import CvBridge, CvBridgeError
+bridge = CvBridge()
 
 from ira.general_gpt import GPT
 
 from ira_interfaces.msg import GptComplete
 from ira_interfaces.msg import SystemState
 
-import time
+import time, cv2, os
 
 class GPTNode(Node):
         
@@ -49,8 +51,27 @@ class GPTNode(Node):
         """
         # TODO maybe this needs to be just the cropped FOI instead ?? To comment on the person in particular! 
         # Display the message on the console
-        self.get_logger().info("In lastest_image_callback")
-        self.latest_image = msg #TOOD format... message is just an image
+        self.get_logger().info("In GPT lastest_image_callback !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        self.latest_image = bridge.imgmsg_to_cv2(msg, 'bgr8')
+
+        # Ensure the 'images' directory exists one level up
+        parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+        image_dir = os.path.join(parent_dir, "images")
+        if not os.path.exists(image_dir):
+            self.get_logger().info(f"Directory {image_dir} does not exist. Creating it.")
+            try:
+                os.makedirs(image_dir)
+            except Exception as e:
+                self.get_logger().error(f"Failed to create directory {image_dir}: {str(e)}")
+                return
+
+        # Save the image to the specified path
+        image_path = os.path.join(image_dir, "latest_image.png")
+        try:
+            cv2.imwrite(image_path, self.latest_image)
+            self.get_logger().info(f"Image saved at {image_path}")
+        except Exception as e:
+            self.get_logger().error(f"Failed to save image: {str(e)}")
 
     def system_state_callback(self, msg):
         """
@@ -80,13 +101,13 @@ class GPTNode(Node):
                 self.gpt.add_user_message_and_get_response_and_speak("The command is: <too_far>") # TODO is image in right format?
                 self.gpt_complete(msg.seq)
             elif msg.state == 'interaction_unknown':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_unknown>.  The image path : self.latest_image") # TODO is image in right format?
+                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_unknown>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png") # TODO is image in right format?
                 self.gpt_complete(msg.seq)
             elif msg.state == 'interaction_known':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known>.  The image path : self.latest_image") # TODO is image in right format?
+                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png") # TODO is image in right format?
                 self.gpt_complete(msg.seq)
             elif msg.state == 'interaction_known_recent':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known_recent>.  The image path : self.latest_image") # TODO is image in right format?
+                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known_recent>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png") # TODO is image in right format?
                 self.gpt_complete(msg.seq)
             elif msg.state == 'disappeared':
                 self.gpt.add_user_message_and_get_response_and_speak("The command is: <disappeared>") # TODO is image in right format?
