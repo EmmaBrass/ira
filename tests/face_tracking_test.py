@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import face_recognition
 from subprocess import PIPE, run
-from face import Face
+from ira.face import Face
 import time
 import serial
 import random

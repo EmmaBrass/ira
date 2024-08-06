@@ -38,32 +38,33 @@ class GPT():
         # Dictionary of commands that the assistant will use and instructions for how 
         # to respond to  each one.
         commands = {
-            "<found_noone>" : "there is no one around you to paint and you are a little lonely.",
-            "<say_painted_recently>" : "The person in front of your was painted too recently for \
-                you to paint them again just yet.",
-            "<too_far>" : "All the people you can see are too far away for you to be able to paint them. \
+            "<found_noone>" : "There is no one around me to paint and I am a little lonely.",
+            "<say_painted_recently>" : "The person in front of me was painted too recently for \
+                me to paint them again just yet.",
+            "<too_far>" : "All the people I can see are too far away for me to be able to paint them. \
                 They need to come closer if they want their beautiful faces painted.",
-            "<interaction_unknown>" : "You will also be provided with an image of a person. \
-                You have not met them before and you will gree them.  Also call \
+            "<interaction_unknown>" : "I am provided with an image of a person. \
+                I have not met them before and I say hello.  Also call \
                 the image_analysis function to assess the image.",
-            "<interaction_known>" : "You will also be provided with an image of a person. \
-                You have met them before and hence you recognise them.  Also call \
+            "<interaction_known>" : "I am provided with an image of a person. \
+                I have met them before and hence I recognise them.  Also call \
                 the image_analysis function to assess the image.",
-            "<interaction_known_recent>" : "You will also be provided with an image of a person. \
-                You have met them before and hence you recognise them.  Also they \
-                disappeared before you could paint them last time.  Also call \
+            "<interaction_known_recent>" : "I am provided with an image of a person. \
+                I have met them before and hence I recognise them.  Also they \
+                disappeared before I could paint them last time.  Also call \
                 the image_analysis function to assess the image.",
-            "<disappeared>" : "The person you were just talking to has disappeared. \
-                You wonder where they could have gone to.",
+            "<disappeared>" : "The person I was just talking to has disappeared. \
+                I wonder where they could have gone to.",
             "<interaction_returned>" : "A person who disappeared before has now \
-                returned.  You have joy at seeing them again and getting to continue \
+                returned.  I have joy at seeing them again and getting to continue \
                 the interaction.",
-            "<gone>" : "The person you were just talking to has gone for good. \
-                You gracefully accept the rejection and prepare to move on to another \
+            "<gone>" : "The person I was just talking to has gone for good. \
+                I gracefully accept the rejection and prepare to move on to another \
                 subject.",
-            "<painting>" : "You are now painting the person.  Comment on your love of the \
-                process of painting, and that you cannot wait for them to see the final product.",
-            "<completed>" : "Comment on how good your work is and ask the user \
+            "<painting>" : "I am now painting you.  Comment on my love of the \
+                process of painting, and that I cannot wait for them to see the final product.",
+            "<continue_painting>" : "I am still painting.  Comment on how it is going.",    
+            "<completed>" : "Comment on how good my work is and ask the user \
                 what they think of it."
         }
 
@@ -75,10 +76,11 @@ class GPT():
                 what is going on with people around you: whether there are people around you or not, \
                 whether you painted someone recently, if they disappeared, etc.
                 The commands are outlined this dictionary: {commands} \
-                DO NOT RESPOND WITH THE EXACT TEXT FROM THE DICTIONARY OF COMMANDS - the \
-                dictionary values simply give you the context, and then you decide for yourself what to say. \
+                Do NOT respond with the exact text from the dictionary - the \
+                dictionary values simply give a framework; repsond with a variation. \
                 What you say should be different every time.
-                You should address people DIRECTLY. \
+                Remember you are the one doing the painting, so use first person "I" for the painter \
+                and second person "YOU" for the subject being painted; e.g. "Now I will paint YOU."
                 If the user gives you a path to an image, please run \
                 the image_analysis function.  Report back the exact message \
                 generated by this function as if it were your own views.""",
@@ -118,7 +120,6 @@ class GPT():
             assistant_id=assistant.id,
         )
         run = self.wait_on_run(run, thread)
-        print("HERE2")
         if run.status == "requires_action":
             # Extract tool calls
             for tool_call in run.required_action.submit_tool_outputs.tool_calls:
@@ -126,6 +127,9 @@ class GPT():
                 arguments = json.loads(tool_call.function.arguments)
                 if name == "image_analysis":
                     image_response = self.image_analysis(arguments["image_path"])
+                    if run.status != "completed":
+                        # If the run did not complete naturally, force it to end
+                        self.client.beta.threads.runs.cancel(run_id=run.id, thread_id=thread.id)
                     return image_response
                     #run = self.submit_tool_outputs(run, thread, tool_call, image_response)
             #time.sleep(0.3)
@@ -200,7 +204,7 @@ class GPT():
             return str(image_response)
         
     def text_to_speech(self, to_speak): # TODO add in streaming?
-        speech_file_path = "mp3/speech.mp3"
+        speech_file_path = "/home/emma/ira_ws/src/ira/ira/mp3/speech.mp3" #TODO get from constants.py file
         with self.client.audio.speech.with_streaming_response.create(
             model="tts-1",
             voice="alloy",
@@ -209,7 +213,7 @@ class GPT():
             response.stream_to_file(speech_file_path)
 
     def speak(self):
-        playsound("mp3/speech.mp3")
+        playsound("/home/emma/ira_ws/src/ira/ira/mp3/speech.mp3")
 
     def add_user_message_and_get_response_and_speak(self, message: str):
         # By this stage the reponse should be a simple, single string.  
@@ -217,6 +221,7 @@ class GPT():
         print(f"RESPONSE: {response}")
         self.text_to_speech(response)
         self.speak()
+        return str(response)
 
     
         

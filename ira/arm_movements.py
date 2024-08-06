@@ -24,8 +24,8 @@ class ArmMovements():
         self.vertical_painting_width = 650 # max reach of robot
         self.vertical_painting_height = 700 # max reach of robot
 
-        self.horizontal_painting_width = 400 # max reach of robot
-        self.horizontal_painting_height = 400 # max reach of robot
+        self.horizontal_painting_width = 450 # max reach of robot
+        self.horizontal_painting_height = 450 # max reach of robot
 
         self.light = False # False = using a pen/paintbrush instead (hence need x movement away from canvas between contours)
 
@@ -34,25 +34,25 @@ class ArmMovements():
         self.between_speed = 50 # speed when moving between marks/pots
 
         # For tracking distance travelled - for brush reload
-        self.reload_dist = 300 #mm
+        self.reload_dist = 500 #mm, how much to paint before a reload
         self.travelled_dist = self.reload_dist+1 # so it reloads on first movement
 
         # For paint reload pot
-        self.x_dist_reload = -50 # x distance in mm from the top-left origin corner
-        self.y_dist_reload = 40 # y distance in mm from the top-left origin corner
+        self.x_dist_reload = 150 # x distance in mm from the top-left origin corner
+        self.y_dist_reload = -150 # y distance in mm from the top-left origin corner
 
         # For brush lifts
         self.brush_lift = 15 # the amount to lift brush off page between lines, mm
         self.pot_lift = 70 # distance in mm to lift when going to paint pot
 
         # Start position for HORIZONTAL TODO rename these to distinguish from vertical
-        # 
-        self.x_start = 557.9
-        self.y_start = 375
-        self.z_start = -0.3
-        self.roll_start = 179.3
-        self.pitch_start = 0
-        self.yaw_start = 32
+        # Set the values here if you want to change start position
+        self.x_start = 213.9
+        self.y_start = -318.7
+        self.z_start = -4
+        self.roll_start = 179.9
+        self.pitch_start = 0.1
+        self.yaw_start = 0.2
 
     def initial_position(self):
         """
@@ -73,8 +73,8 @@ class ArmMovements():
         Move to a new random position within the viewing plane.
         """
         self.arm.set_position(
-            x=self.x_start-200, 
-            y=self.y_start-random.randint(0,400),
+            x=self.x_start+100, 
+            y=self.y_start+random.randint(100,400),
             z=self.z_start+random.randint(50,400),
             roll=None, 
             pitch=None, 
@@ -220,11 +220,9 @@ class ArmMovements():
                 contour_start = False
                     
         else:
+            print("Doing horizontal painting of face")
             # Move to origin point for horizontal painting: top-left (0,0)
             # TODO these needs to be adjusted whenever paintbrush moved/replaced
-            print("Doing horizontal painting of face")
-
-            # Set the same position but with x and y and z - here set the correct height
             print("Setting postion by x y z.")
             self.arm.set_position(
                 x=self.x_start, 
@@ -262,8 +260,8 @@ class ArmMovements():
                 start_y_abs = -1
                 for pair in contour:
                     x, y = pair
-                    y_abs = self.y_start-x
-                    x_abs = self.x_start-y
+                    y_abs = self.y_start+x
+                    x_abs = self.x_start+y
                     if start_x_abs == -1 and start_y_abs == -1:
                         start_x_abs = x_abs
                         start_y_abs = y_abs
@@ -292,13 +290,15 @@ class ArmMovements():
                         relative=False, 
                         wait=True
                     )
-                    # Correct servo 6 angle and do the movement
+                    # Correct servo 6 angle
                     self.arm.set_servo_angle(
                         servo_id=6, 
                         angle=0, 
+                        speed=150,
                         is_radian=False, 
                         wait=True
                     )
+                    # Do the movement
                     self.arm.set_position(
                         x=start_x_abs, 
                         y=start_y_abs, 
@@ -340,6 +340,9 @@ class ArmMovements():
                     mvacc=1500, 
                     wait=True
                 )
+
+        # Return to initial position
+        self.initial_position()
 
 
     def reload_brush(self):

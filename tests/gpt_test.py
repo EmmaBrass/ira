@@ -1,14 +1,17 @@
 
 import time
-from general_gpt import GPT
+from ira.general_gpt import GPT
 
 
 gpt = GPT()
-time.sleep(1)
+time.sleep(2)
 print("DONE INITIALISING")
 
-gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_unknown>.  The image path: images/latest_image.png")
+gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_unknown>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png")
+time.sleep(2)
+gpt.add_user_message_and_get_response_and_speak("The command is: <painting>.")
 #gpt.add_user_message_and_get_response_and_speak("<interaction_unknown>. image_path: '/home/emma/ira_ws/src/ira/tests/image/2024-06-25-112719.jpg' ")
+
 
 
 

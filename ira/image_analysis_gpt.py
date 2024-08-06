@@ -16,7 +16,7 @@ class ImageGPT():
             }
 
         payload = {
-            "model": "gpt-4-vision-preview",
+            "model": "gpt-4o-mini",
             "messages": [
                 {
                 "role": "user",
@@ -81,10 +81,8 @@ class ImageGPT():
             headers=headers, 
             json=payload
         )
-        print("IMAGE GPT RESPONSE ????????????????????????????????????????")
-        print(response.json())
         print(response.json()['choices'][0]['message']['content'])
-        return response.json()['choices'][0]['message']['content'] # a string that is the comment on the image
+        return response.json()['choices'][0]['message']['content'] #.json()['choices'][0]['message']['content'] # a string that is the comment on the image
 
 
 

@@ -1,5 +1,5 @@
-from arm_outline import Outline
-from arm_movements import ArmMovements
+from ira.arm_outline import Outline
+from ira.arm_movements import ArmMovements
 from subprocess import PIPE, run
 import cv2
 
@@ -22,8 +22,8 @@ cv2.destroyAllWindows()
 
 frame_copy = frame.copy()
 
-
+# Make the outline form the original image
 coordinates, image_x, image_y = outliner.find_contours_coordinates(frame, False)
-#outliner.find_facial_features(frame, frame_copy)
 
+# PAINT the image
 movements.paint_image(coordinates, image_x, image_y)

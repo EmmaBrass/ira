@@ -29,12 +29,12 @@ class InteractionNode(Node):
 
         # Load known face objects from .dat file
 
-         # Get the path to the data file
+        # Get the path to the data file
         package_share_directory = get_package_share_directory('ira')
-        data_file_path = os.path.join(package_share_directory, 'resource', 'dataset_faces.dat')
+        self.data_file_path = os.path.join(package_share_directory, 'resource', 'dataset_faces.dat')
         
         # Load the pickled data file
-        with open(data_file_path, 'rb') as file:
+        with open(self.data_file_path, 'rb') as file:
             self.all_faces = pickle.load(file)
         
         self.get_logger().info(f"Data from file: {self.all_faces}")
@@ -49,15 +49,15 @@ class InteractionNode(Node):
         self.cropped_image = None
 
         self.seq = 0
-        self.prev_gpt_complete = [True]
-        self.prev_arm_complete = [True]
+        self.prev_gpt_complete = [False]
+        self.prev_arm_complete = [False]
         
         # Initialise publishers
         self.system_state_publisher = self.create_publisher(SystemState, 'system_state', 10)
         self.cropped_face_publisher = self.create_publisher(Image, 'cropped_face', 10)
         self.foi_coordinates_publisher = self.create_publisher(FoiCoord, 'foi_coordinates', 10) #TODO this isn't published anywhere yet
 
-        timer_period = 0.5  # seconds
+        timer_period = 2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
 
         # Initialise subscribers
@@ -102,6 +102,7 @@ class InteractionNode(Node):
         """
         self.get_logger().info("In arm_completion_callback")
         if msg.seq == self.seq:
+            self.get_logger().info(str(msg.seq))
             if msg.complete == True:
                 self.prev_arm_complete[self.seq] = True
 
@@ -117,12 +118,11 @@ class InteractionNode(Node):
     def publish_state(self, state: str):
         self.get_logger().info("Publishing system state")
         msg = SystemState()
+        self.get_logger().info(f'Current self.seq in publish_state method: {self.seq}')
         msg.seq = self.seq
         msg.state = state
         for i in range(5):
             self.system_state_publisher.publish(msg)
-        self.prev_arm_complete.append(False)
-        self.prev_gpt_complete.append(False)
 
     def timer_callback(self):
         """
@@ -133,56 +133,46 @@ class InteractionNode(Node):
         and publishes to other topics if in the appropriate state.
         """
         self.get_logger().info(f'Current system state: {self.state_machine.state}')
+        # Publish the current state, to start arm and GPT processes.
+        self.publish_state(str(self.state_machine.state))
         
+        # If arm and GPT processes completed, tick the state forward.
         if self.prev_arm_complete[self.seq] == True and self.prev_gpt_complete[self.seq] == True:
             self.seq += 1 
+            self.prev_arm_complete.append(False)
+            self.prev_gpt_complete.append(False)
+            self.get_logger().info(f'Current self.seq: {self.seq}')
             # Run a function for the given state, to tick the state machine forwards by one.
             if self.state_machine.state == 'scanning':
-                self.publish_state("scanning")
                 self.scanning()
-                self.get_logger().info(f'HERE1')
-                self.get_logger().info(f'Current system state: {self.state_machine.state}')
             elif self.state_machine.state == 'found_noone':
-                self.publish_state("found_noone")
                 self.found_noone()
             elif self.state_machine.state == 'found_unknown':
-                self.publish_state("found_unknown")
                 self.found_unknown()
             elif self.state_machine.state == 'found_known':
-                self.publish_state("found_known")
                 self.found_known()
             elif self.state_machine.state == 'say_painted_recently':
-                self.publish_state("say_painted_recently")
                 self.say_painted_recently()
             elif self.state_machine.state == 'too_far':
-                self.publish_state("too_far")
                 self.too_far()
             elif self.state_machine.state == 'interaction_unknown': #TODO centre the face? probably no
-                self.publish_state("interaction_unknown")
                 self.interaction_unknown()
             elif self.state_machine.state == 'interaction_known': #TODO centre the face? no
-                self.publish_state("interaction_known")
                 self.interaction_known()
             elif self.state_machine.state == 'interaction_known_recent': #TODO centre the face? no
-                self.publish_state("interaction_known_recent")
                 self.interaction_known_recent()
             elif self.state_machine.state == 'disappeared':
-                self.publish_state("disappeared")
                 self.disappeared()
             elif self.state_machine.state == 'interaction_returned': #TODO centre the face? no
-                self.publish_state("interaction_returned")
                 self.interaction_returned()
             elif self.state_machine.state == 'gone':
-                self.publish_state("gone")
                 self.gone()
             elif self.state_machine.state == 'painting':
                 for i in range(5):
                     self.cropped_face_publisher.publish(self.cropped_image) 
                 time.sleep(2)
-                self.publish_state("painting")
                 self.painting()
             elif self.state_machine.state == 'completed':
-                self.publish_state("completed")
                 self.completed()
             # Publish coordinates of foi if there is one
             if self.foi != None:
@@ -199,8 +189,6 @@ class InteractionNode(Node):
                 msg.image_x = int(self.latest_image.shape[1])
                 msg.image_y = int(self.latest_image.shape[0])
                 self.foi_coordinates_publisher.publish(msg)
-            self.get_logger().info(f'HERE2')
-            self.get_logger().info(f'Current system state: {self.state_machine.state}')
 
 
     def scanning(self):
@@ -210,12 +198,9 @@ class InteractionNode(Node):
         self.get_logger().info(f'In scanning method')
 
         frame_face_objects = self.find_faces()
-        self.get_logger().info(f'here1')
 
         known_list = [face.known for face in frame_face_objects]
         size_list = [face.size for face in frame_face_objects]
-        self.get_logger().info(f'frame_face_objects:')
-        self.get_logger().info(str(len(frame_face_objects)))
 
         if len(frame_face_objects) > 0:
             self.noone_counter = 0
@@ -230,12 +215,7 @@ class InteractionNode(Node):
                         max_size = size
                         max_index = i
                 self.foi= frame_face_objects[max_index]
-                try:
-                    self.get_logger().info(f"Current state before transition: {self.state_machine.state}")
-                    self.state_machine.to_found_unknown()
-                    self.get_logger().info(f"Current state after transition: {self.state_machine.state}")
-                except Exception as e:
-                    self.get_logger().error(f"Transition failed: {str(e)}")
+                self.state_machine.to_found_unknown()
             # If there is no unknown face present
             else:
                 self.get_logger().info('No unknown face present')
@@ -248,12 +228,8 @@ class InteractionNode(Node):
                         max_index = i
                 self.foi = frame_face_objects[max_index]
                 # A known face found
-                try:
-                    self.get_logger().info(f"Current state before transition: {self.state_machine.state}")
-                    self.state_machine.to_found_known()
-                    self.get_logger().info(f"Current state after transition: {self.state_machine.state}")
-                except Exception as e:
-                    self.get_logger().error(f"Transition failed: {str(e)}")
+                self.state_machine.to_found_known()
+
         else:
             self.get_logger().info('No face found in image')
             self.foi = None
@@ -277,31 +253,23 @@ class InteractionNode(Node):
         Check if they are close enough.
         """
         frame_face_objects = self.find_faces()
-        self.get_logger().info(f'HERE3')
 
         if self.foi not in frame_face_objects:
             # FOI has disappeared... back to scanning
-            self.get_logger().info(f'HERE4')
             self.scan_counter = 0
             self.state_machine.to_scanning()
-            self.get_logger().info(f'HERE5')
         else:
-            self.get_logger().info(f'HERE6')
             if self.foi.close == True:
-                self.get_logger().info(f'HERE7')
                 # Face is present and close 
                 self.scan_counter = 0
                 self.state_machine.to_interaction_unknown()
             else:
-                self.get_logger().info(f'HERE8')
-                if self.scan_counter > 2:
-                    self.get_logger().info(f'HERE9')
-                    # Face is too far away and have scanned >2 times already
+                if self.scan_counter > 1 :
+                    # Face is too far away and have scanned >1 times already
                     self.scan_counter = 0
                     self.state_machine.to_too_far()
                 else:
-                    self.get_logger().info(f'HERE10')
-                    # Face is too far away and have scanned <3 times
+                    # Face is too far away and have scanned <2 times
                     self.scan_counter += 1
                     self.state_machine.to_scanning()
 
@@ -329,9 +297,8 @@ class InteractionNode(Node):
                         if interaction.outcome == 'painting' and interaction.date_time > last_painting:
                             last_painting = interaction.date_time
                 duration = datetime.now() - last_painting
-                duration_in_s = duration.total_seconds()    
-                hours = divmod(duration_in_s, 3600)[0]    
-                if hours < 3 and last_interaction != 'gone':
+                duration_in_s = duration.total_seconds()        
+                if duration_in_s < 10 and last_interaction != 'gone': #TODO edit the duration_is_s to be whatever needed - add to constants.py
                     # Painted too recently to paint again
                     self.state_machine.to_say_painted_recently()
                 elif last_interaction == 'gone':
@@ -659,7 +626,7 @@ class InteractionNode(Node):
         """
         Save the updated face objects list into the pickle .dat file.
         """
-        with open('dataset_faces.dat', 'wb') as f:
+        with open(self.data_file_path, 'wb') as f: #TODO check if this file exists before saving?
             pickle.dump(self.all_faces, f)
 
 

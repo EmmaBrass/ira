@@ -51,7 +51,7 @@ class GPTNode(Node):
         """
         # TODO maybe this needs to be just the cropped FOI instead ?? To comment on the person in particular! 
         # Display the message on the console
-        self.get_logger().info("In GPT lastest_image_callback !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        self.get_logger().info("In GPT lastest_image_callback")
         self.latest_image = bridge.imgmsg_to_cv2(msg, 'bgr8')
 
         # Ensure the 'images' directory exists one level up
@@ -88,41 +88,55 @@ class GPTNode(Node):
                 self.get_logger().info("GPT received scanning state")
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_noone':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_noone>") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_noone>")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_unknown':
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_known':
                 self.gpt_complete(msg.seq)
             elif msg.state == 'say_painted_recently':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <say_painted_recently>") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <say_painted_recently>")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'too_far':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <too_far>") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <too_far>")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'interaction_unknown':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_unknown>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_unknown>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'interaction_known':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'interaction_known_recent':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known_recent>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known_recent>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'disappeared':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <disappeared>") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <disappeared>")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'interaction_returned':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_returned>") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_returned>")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'gone':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <gone>") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <gone>")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'painting':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <painting>") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <painting>")
+                self.get_logger().info(response)
+                time.sleep(25)
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <continue_painting>")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'completed':
-                self.gpt.add_user_message_and_get_response_and_speak("The command is: <completed>") # TODO is image in right format?
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <completed>")
+                self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             else:
                 self.gpt_complete(msg.seq)

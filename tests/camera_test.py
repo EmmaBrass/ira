@@ -40,9 +40,11 @@ class Camera():
         time.sleep(1)
 
     def read(self):
-        for i in range(10):
+        for i in range(2):
             time.sleep(0.2)
-            ret, frame = self.cam.read() 
+            ret, frame_flipped = self.cam.read() 
+            print("flipping!!!")
+            frame = cv2.flip(frame_flipped, 0)
         return frame
 
     def release(self):
