@@ -7,106 +7,13 @@
 # Author: Vinman <vinman.wen@ufactory.cc> <vinman.cub@gmail.com>
 
 """
-Description: Move line(linear motion)
+Test script for xArm6
 """
 
-import os
-import sys
-import time
+from ira.arm_movements import ArmMovements
+import ira.configuration as config
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+movements = ArmMovements()
 
-from xarm.wrapper import XArmAPI
+movements.straight_position()
 
-arm = XArmAPI('192.168.1.200')
-arm.motion_enable(enable=True)
-arm.set_mode(0)
-arm.set_state(state=0)
-
-
-def initial_position():
-    """
-    Move to initial position, via a stretch up.  
-    """
-    # self.arm.set_servo_angle(servo_id=2, angle=0, speed=10, relative=False, wait=True)
-    # self.arm.set_servo_angle(servo_id=1, angle=0, speed=50, relative=False, wait=True)
-    # self.arm.set_servo_angle(servo_id=3, angle=-150, speed=20, relative=False, wait=True)
-    # self.arm.set_servo_angle(servo_id=4, angle=0, speed=20, relative=False, wait=True)
-    # self.arm.set_servo_angle(servo_id=5, angle=20, speed=20, relative=False, wait=True)
-    # self.arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-
-    arm.set_servo_angle(servo_id=2, angle=-35, speed=10, relative=False, wait=True)
-    arm.set_servo_angle(servo_id=3, angle=-16, speed=20, relative=False, wait=True)
-    arm.set_servo_angle(servo_id=4, angle=0, speed=20, relative=False, wait=True)
-    arm.set_servo_angle(servo_id=5, angle=51, speed=20, relative=False, wait=True)
-    arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-    arm.set_servo_angle(servo_id=1, angle=0, speed=50, relative=False, wait=True)
-    print("Done returning to initial position")
-
-# Move to origin point for vertical painting: top-left (0,0)
-# arm.set_servo_angle(servo_id=1, angle=218.2, speed=50, relative=False, wait=True)
-# arm.set_servo_angle(servo_id=3, angle=-130.5, speed=20, relative=False, wait=True)
-# arm.set_servo_angle(servo_id=2, angle=18.8, speed=10, relative=False, wait=True)
-# arm.set_servo_angle(servo_id=4, angle=-66.2, speed=20, relative=False, wait=True)
-# arm.set_servo_angle(servo_id=5, angle=43.4, speed=20, relative=False, wait=True)
-# arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-
-#initial_position()
-
-# Move to origin point for horizontal painting: top-left (0,0)
-print("Moving to horizontal origin")
-arm.set_servo_angle(servo_id=1, angle=30.4, speed=30, relative=False, wait=True)
-arm.set_servo_angle(servo_id=3, angle=-95.4, speed=20, relative=False, wait=True)
-arm.set_servo_angle(servo_id=4, angle=0, speed=20, relative=False, wait=True)
-arm.set_servo_angle(servo_id=5, angle=53.1, speed=20, relative=False, wait=True)
-arm.set_servo_angle(servo_id=6, angle=27.7, is_radian=False, wait=True)
-arm.set_servo_angle(servo_id=2, angle=42.3, speed=10, relative=False, wait=True)
-print("Here!")
-
-print("Doing x and y movements")
-print("Z up")
-arm.set_position(x=0, y=0, z=10, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-# Correct servo 6 angle and do the movement
-print("move along")
-arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-arm.set_position(x=0, y=-100, z=0, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-arm.set_position(x=-100, y=-0, z=0, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-# Put the pen down
-print("z down")
-arm.set_position(x=0, y=0, z=-10, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-
-time.sleep(2)
-
-# # Test the motion in columns through the space:
-# for i in range(7): # (50x2)x7 = 700
-#     arm.set_position(x=0, y=50, z=0, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-#     arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-#     arm.set_position(x=0, y=0, z=-700, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-#     arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-#     arm.set_position(x=0, y=50, z=0, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-#     arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-#     arm.set_position(x=0, y=0, z=700, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-#     arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-
-# # arm.set_position(x=300, y=0, z=150, roll=0, pitch=0, yaw=0, speed=100, wait=True)
-# # print(arm.get_position(), arm.get_position(is_radian=True))
-# # arm.set_position(x=300, y=200, z=250, roll=-180, pitch=0, yaw=0, speed=100, wait=True)
-# # print(arm.get_position(), arm.get_position(is_radian=True))
-# # arm.set_position(x=500, y=200, z=150, roll=-180, pitch=0, yaw=0, speed=100, wait=True)
-# # print(arm.get_position(), arm.get_position(is_radian=True))
-# # arm.set_position(x=500, y=-200, z=250, roll=-180, pitch=0, yaw=0, speed=100, wait=True)
-# # print(arm.get_position(), arm.get_position(is_radian=True))
-# # arm.set_position(x=300, y=-200, z=150, roll=-180, pitch=0, yaw=0, speed=100, wait=True)
-# # print(arm.get_position(), arm.get_position(is_radian=True))
-# # arm.set_position(x=300, y=0, z=250, roll=-180, pitch=0, yaw=0, speed=100, wait=True)
-# # print(arm.get_position(), arm.get_position(is_radian=True))
-
-# # GI
-
-
-# # OPENCV origin is top left... so mine should be to!!
-
-# # Add error handling... if hits a singularity... 'reset' itself and skip that contour.
-
-# #arm.reset(wait=True)#
-# arm.disconnect()

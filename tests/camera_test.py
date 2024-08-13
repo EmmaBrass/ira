@@ -25,7 +25,7 @@ class Camera():
         #     #     cam_id = int(item.split("[")[2].split(']')[0])
         # self.logger.info("Ultra HD 4K ID is: %s", cam_id)
 
-        cam_id = 0 #s"/dev/video4"
+        cam_id = 4 #s"/dev/video4"
         self.cam = cv2.VideoCapture(cam_id)
         if not self.cam.isOpened():
             print("Error: Could not open the USB camera.")

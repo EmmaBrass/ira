@@ -25,6 +25,8 @@ class EyeNode(Node):
 
         self.eyes = EyeControl(com_port=self.eyes_port)
 
+        self.swirl_complete = False
+
         self.eye_state = "default"
         self.foi_coordinates = [512,512]
         self.image_dimensions = [1023, 1023]
@@ -63,11 +65,9 @@ class EyeNode(Node):
         """
         Callback function for the system state.
         """
-        # Display the message on the console
-        self.get_logger().info("In system_state_callback")
-
-        # TODO check seq ?
+        self.get_logger().info("In system state callback for eyes!")
         if msg.state == 'scanning':
+            self.get_logger().info("In scanning system state for eyes!")
             self.eye_state = "default"
         elif msg.state == 'found_noone':
             self.eye_state = "straight"
@@ -94,7 +94,7 @@ class EyeNode(Node):
         elif msg.state == 'painting':
             self.eye_state = "default"
         elif msg.state == 'completed':
-            self.eye_state = "default"
+            self.eye_state = "swirl"
         else:
             self.eye_state = "default"
 
@@ -106,14 +106,21 @@ class EyeNode(Node):
         if self.eye_state == "default":
             # Just look around randomly
             self.eyes.default_movement()
+            self.swirl_complete = False
+        if self.eye_state == "swirl" and self.swirl_complete == False:
+            # Swirl the eyes in opposite directions
+            self.eyes.swirl()
+            self.swirl_complete = True
         if self.eye_state == "straight":
             # Look straight ahead (while painting)
             self.eyes.straight()
+            self.swirl_complete = False
         if self.eye_state == "focus":
             # Focus on the foi
             foi_x = self.map_value(self.foi_coordinates[0],0,self.image_dimensions[0],1023,0)
             foi_y = self.map_value(self.foi_coordinates[1],0,self.image_dimensions[1],1023,0)
             self.eyes.focus(foi_x, foi_y)
+            self.swirl_complete = False
 
     def map_value(self, x, in_min, in_max, out_min, out_max):
         return out_min + ((x - in_min) * (out_max - out_min) / (in_max - in_min))

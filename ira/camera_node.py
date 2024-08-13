@@ -16,9 +16,9 @@ class CameraNode(Node):
     def __init__(self):
         super().__init__('camera_node')
         self.declare_parameter('sim', False)
-        self.declare_parameter('cam_id', 0)
+        self.declare_parameter('cam_id', 4)
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
-        self.cam_port = 0
+        self.cam_port = 4
 
         self.camera = Camera(port_num=self.cam_port)
         self.bridge = CvBridge()
@@ -38,7 +38,6 @@ class CameraNode(Node):
         Read from the camera and publish
         an image to the latest_image topic.
         """
-        self.get_logger().debug('In timer_callback')
         latest_image = self.camera.read()
         self.latest_image_publisher.publish(self.bridge.cv2_to_imgmsg(latest_image, "bgr8"))
 

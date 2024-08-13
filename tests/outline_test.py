@@ -22,6 +22,8 @@ cv2.destroyAllWindows()
 
 frame_copy = frame.copy()
 
+#frame = cv2.imread("./images/beard_test.jpeg")
+
 # Make the outline form the original image
 coordinates, image_x, image_y = outliner.find_contours_coordinates(frame, False)
 

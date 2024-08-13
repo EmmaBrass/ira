@@ -28,7 +28,7 @@ class ArmNode(Node):
         self.movements = ArmMovements()
         self.outline = Outline()
         self.cropped_face = None
-        self.state_seq = 0
+        self.state_seq = -1
 
         # Initialise publishers
         self.arm_complete_publisher = self.create_publisher(ArmComplete, 'arm_complete', 10) #TODO create a custom message type for this?
@@ -66,9 +66,6 @@ class ArmNode(Node):
         """
         Callback function for the system state.
         """
-        # Display the message on the console
-        self.get_logger().info("In system_state_callback")
-        
         if msg.seq > self.state_seq:
             self.state_seq = msg.seq
             if self.sim_mode:

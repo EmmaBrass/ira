@@ -21,7 +21,7 @@ class GPTNode(Node):
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
         self.gpt = GPT()
-        self.state_seq = 0
+        self.state_seq = -1
 
         # Initialise publishers
         self.gpt_complete_publisher = self.create_publisher(GptComplete, 'gpt_complete', 10) #TODO create a custom message type for this?
@@ -49,9 +49,6 @@ class GPTNode(Node):
         Callback function for receving image from camera.
         Loads it in as the latest image.
         """
-        # TODO maybe this needs to be just the cropped FOI instead ?? To comment on the person in particular! 
-        # Display the message on the console
-        self.get_logger().info("In GPT lastest_image_callback")
         self.latest_image = bridge.imgmsg_to_cv2(msg, 'bgr8')
 
         # Ensure the 'images' directory exists one level up
@@ -69,7 +66,6 @@ class GPTNode(Node):
         image_path = os.path.join(image_dir, "latest_image.png")
         try:
             cv2.imwrite(image_path, self.latest_image)
-            self.get_logger().info(f"Image saved at {image_path}")
         except Exception as e:
             self.get_logger().error(f"Failed to save image: {str(e)}")
 
@@ -77,12 +73,7 @@ class GPTNode(Node):
         """
         Callback function for the system state.
         """
-        self.get_logger().info("In system_state_callback")
-        self.get_logger().info(f"{msg.seq=}")
-        self.get_logger().info(f"{self.state_seq=}")
-
         if msg.seq > self.state_seq:
-            self.get_logger().info("HERE GPT")
             self.state_seq = msg.seq
             if msg.state == 'scanning':
                 self.get_logger().info("GPT received scanning state")
@@ -92,8 +83,10 @@ class GPTNode(Node):
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_unknown':
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found>")
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_known':
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found>")
                 self.gpt_complete(msg.seq)
             elif msg.state == 'say_painted_recently':
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <say_painted_recently>")
@@ -130,7 +123,7 @@ class GPTNode(Node):
             elif msg.state == 'painting':
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <painting>")
                 self.get_logger().info(response)
-                time.sleep(25)
+                time.sleep(30)
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <continue_painting>")
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)

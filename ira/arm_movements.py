@@ -1,6 +1,7 @@
 from xarm.wrapper import XArmAPI #TODO install
 import cv2
 import math, random
+import ira.configuration as config
 
 class ArmMovements():
     """
@@ -16,8 +17,7 @@ class ArmMovements():
         # TODO set velocity
         # TODO set_mount_direction()
 
-
-        self.vertical = False # If true, vertical surface. If False, horizontal
+        self.vertical = config.VERTICAL # If true, vertical surface. If False, horizontal
 
         self.vertical_dist = 40 # Distance in cm of the vertical surace from the robot base
         self.vertical_height = 0 # Distance in cm of the bottom of the vertical surface from the bottom of the robot base
@@ -27,11 +27,11 @@ class ArmMovements():
         self.horizontal_painting_width = 450 # max reach of robot
         self.horizontal_painting_height = 450 # max reach of robot
 
-        self.light = False # False = using a pen/paintbrush instead (hence need x movement away from canvas between contours)
+        self.light = config.LIGHT # False = using a pen/paintbrush instead (hence need x movement away from canvas between contours)
 
         # Speed settings
-        self.painting_speed = 30 # speed when making a mark
-        self.between_speed = 50 # speed when moving between marks/pots
+        self.painting_speed = 110 # speed when making a mark
+        self.between_speed = 130 # speed when moving between marks/pots
 
         # For tracking distance travelled - for brush reload
         self.reload_dist = 500 #mm, how much to paint before a reload
@@ -45,14 +45,23 @@ class ArmMovements():
         self.brush_lift = 15 # the amount to lift brush off page between lines, mm
         self.pot_lift = 70 # distance in mm to lift when going to paint pot
 
-        # Start position for HORIZONTAL TODO rename these to distinguish from vertical
+        # Start position for HORIZONTAL
         # Set the values here if you want to change start position
-        self.x_start = 213.9
-        self.y_start = -318.7
-        self.z_start = -4
-        self.roll_start = 179.9
-        self.pitch_start = 0.1
-        self.yaw_start = 0.2
+        self.hor_x_start = config.HOR_X_START
+        self.hor_y_start = config.HOR_Y_START
+        self.hor_z_start = config.HOR_Z_START
+        self.hor_roll_start = config.HOR_ROLL_START
+        self.hor_pitch_start = config.HOR_PITCH_START
+        self.hor_yaw_start = config.HOR_YAW_START
+
+        # Start position for VERTICAL
+        # Set the values here if you want to change start position
+        self.ver_x_start = config.VER_X_START
+        self.ver_y_start = config.VER_Y_START
+        self.ver_z_start = config.VER_Z_START
+        self.ver_roll_start = config.VER_ROLL_START
+        self.ver_pitch_start = config.VER_PITCH_START
+        self.ver_yaw_start = config.VER_YAW_START
 
     def initial_position(self):
         """
@@ -65,17 +74,27 @@ class ArmMovements():
         # self.arm.set_servo_angle(servo_id=5, angle=20, speed=20, relative=False, wait=True)
         # self.arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
 
-        self.arm.set_position(x=278, y=2.5, z=93.7, roll=179.4, pitch=0, yaw =-0.1, speed=50, wait=True)
+        self.arm.set_position(x=278, y=2.5, z=93.7, roll=179.4, pitch=0, yaw =-0.1, speed=50, wait=True, motion_type=2)
         print("Done returning to initial position")
+
+    def straight_position(self):
+        """
+        Move to a straight up position, useful when moving 
+        to vertical locations.
+        """
+        self.arm.set_position(x=-157.4, y=-23, z=1011, roll=3.2, pitch=-83.4, yaw =0.7, speed=50, wait=True, motion_type=2)
+        self.arm.set_servo_angle(servo_id=1, angle=180, speed=60, relative=False, wait=True)
+        self.arm.set_position(x=-157.4, y=-23, z=1011, roll=3.2, pitch=-83.4, yaw =0.7, speed=50, wait=True, motion_type=2)
+        print("Done moving to straight position")
 
     def scan(self):
         """
         Move to a new random position within the viewing plane.
         """
         self.arm.set_position(
-            x=self.x_start+100, 
-            y=self.y_start+random.randint(100,400),
-            z=self.z_start+random.randint(50,400),
+            x=self.hor_x_start+100, 
+            y=self.hor_y_start+random.randint(100,400),
+            z=self.hor_z_start+random.randint(200,400),
             roll=None, 
             pitch=None, 
             yaw=None, 
@@ -126,6 +145,11 @@ class ArmMovements():
         return math.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
 
     def reorder_paths_greedy(self, mapped_coordinates):
+        """
+        Use greedy algo to reorder paths to have the shortest
+        travel distances between end of one and start of another.
+        """
+
         if not mapped_coordinates:
             return []
         
@@ -160,50 +184,117 @@ class ArmMovements():
         :param image_y: y width of original image
         """
 
-        # TODO reload paintbrush
-
-
         if self.vertical == True:
+            print("Doing vertical painting of face")
             # Move to origin point for vertical painting: top-left (0,0)
-            # TODO these needs to be adjusted whenever paintbrush moved/replaced
-            self.arm.set_servo_angle(servo_id=1, angle=218.2, speed=50, relative=False, wait=True)
-            self.arm.set_servo_angle(servo_id=3, angle=-130.5, speed=20, relative=False, wait=True)
-            self.arm.set_servo_angle(servo_id=4, angle=-66.2, speed=20, relative=False, wait=True)
-            self.arm.set_servo_angle(servo_id=5, angle=43.4, speed=20, relative=False, wait=True)
-            self.arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-            self.arm.set_servo_angle(servo_id=2, angle=18.8, speed=10, relative=False, wait=True)
+            print("Setting start postion by x y z.")
+            self.arm.set_position(
+                x=self.ver_x_start+self.brush_lift, 
+                y=self.ver_y_start,
+                z=self.ver_z_start, 
+                roll=self.ver_roll_start, 
+                pitch=self.ver_pitch_start, 
+                yaw=self.ver_yaw_start, 
+                speed=self.between_speed,
+                relative=False, 
+                wait=False,
+            )
+            print("Finished setting postion by x y z.")
 
             # Map the contour coordinates into the vertical drawing space
-            offset_x, offset_y, scaling_factor = self.resize_and_center_image(image_x, image_y, self.vertical_painting_width, self.vertical_painting_height)
+            # Map the contour coordinates into the horizontal drawing space
+            offset_x, offset_y, scaling_factor = self.resize_and_center_image(
+                image_x, 
+                image_y, 
+                self.vertical_painting_width, 
+                self.vertical_painting_height
+            )
             mapped_coordinates = self.map_coordinates(coordinates, offset_x, offset_y, scaling_factor)
+            reordered_paths = self.reorder_paths_greedy(mapped_coordinates)
+
+            print(f"{mapped_coordinates=}")
+            print(f"{reordered_paths=}")
 
             prev_x, prev_y = 0, 0
-            contour_start = True
-            for contour in mapped_coordinates:
-                contour_start = True
+            for contour in reordered_paths:
+                if self.travelled_dist >= self.reload_dist:
+                    self.straight_position()
+                    self.reload_brush()
+                    self.travelled_dist = 0
+                path = []
+                start_y_abs = -1
+                start_z_abs = -1
                 for pair in contour:
                     x, y = pair
-                    x_rel = x - prev_x
-                    y_rel = y - prev_y
+                    y_abs = self.ver_y_start+x
+                    z_abs = self.ver_z_start-y
+                    if start_x_abs == -1 and start_y_abs == -1:
+                        start_y_abs = y_abs
+                        start_z_abs = z_abs
+                    path.append([self.hor_x_start, y_abs, z_abs, None, None, None, 50])
+                    if prev_x != 0 and prev_y != 0:
+                        x_change = x - prev_x
+                        y_change = y - prev_y
+                    else:
+                        x_change = 0
+                        y_change = 0
                     prev_x = x
                     prev_y = y
-
+                    dist_change = math.sqrt(x_change**2+y_change**2)
+                    self.travelled_dist += dist_change
+                # Move to the start of the path
                 if self.light == False:
-                    # Lift up the pen (if using a pen)
-                    self.arm.set_position(x=self.brush_lift, y=0, z=0, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-                    # Correct servo 6 angle and do the movement
-                    self.arm.set_servo_angle(servo_id=6, angle=0, is_radian=False, wait=True)
-                    self.arm.set_position(x=0, y=x_rel, z=-y_rel, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
+                    # Lift up the pen
+                    self.arm.set_position(
+                        x=self.ver_x_start+self.brush_lift,  
+                        y=None, 
+                        z=None,
+                        roll=None, 
+                        pitch=None, 
+                        yaw=None, 
+                        speed=self.between_speed, 
+                        relative=False, 
+                        wait=True
+                    )
+                    # Correct servo 6 angle
+                    self.arm.set_servo_angle(
+                        servo_id=6, 
+                        angle=0, 
+                        speed=120,
+                        is_radian=False, 
+                        wait=True
+                    )
+                    # Do the movement
+                    self.arm.set_position(
+                        x=self.ver_x_start+self.brush_lift, 
+                        y=start_y_abs, 
+                        z=start_z_abs,
+                        roll=None, 
+                        pitch=None, 
+                        yaw=None, 
+                        speed=self.between_speed, 
+                        relative=False, 
+                        wait=True
+                    )
                     # Put the pen down
-                    self.arm.set_position(x=-self.brush_lift, y=0, z=0, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
+                    self.arm.set_position(
+                        x=self.ver_x_start,
+                        y=None, 
+                        z=None,
+                        roll=None, 
+                        pitch=None, 
+                        yaw=None, 
+                        speed=self.between_speed, 
+                        relative=False, 
+                        wait=True
+                    )
                 else:
                     # Turn off the light
-                    # Do the movement
+                    # Do the movement to next path
                     # Turn on the light
                     pass
-
-                # Do the movement
-                # Move through the points using move_arc_lines
+                
+                # Do the movement for the path
                 self.arm.move_arc_lines(
                     path, 
                     is_radian=False, 
@@ -211,29 +302,29 @@ class ArmMovements():
                     first_pause_time=0.1, 
                     repeat_pause_time=0, 
                     automatic_calibration=True, 
-                    speed=200, 
-                    mvacc=2000, 
+                    speed=100, 
+                    mvacc=1500, 
                     wait=True
                 )
 
-                self.arm.set_position(x=0, y=x_rel, z=-y_rel, roll=None, pitch=None, yaw=None, speed=20, relative=True, wait=True)
-                contour_start = False
+            # Return to initial position
+            self.straight_position()
+            self.initial_position()
                     
         else:
             print("Doing horizontal painting of face")
             # Move to origin point for horizontal painting: top-left (0,0)
-            # TODO these needs to be adjusted whenever paintbrush moved/replaced
-            print("Setting postion by x y z.")
+            print("Setting start postion by x y z.")
             self.arm.set_position(
-                x=self.x_start, 
-                y=self.y_start, 
-                z=self.z_start+20, 
-                roll=self.roll_start, 
-                pitch=self.pitch_start, 
-                yaw=self.yaw_start, 
+                x=self.hor_x_start, 
+                y=self.hor_y_start, 
+                z=self.hor_z_start+20, 
+                roll=self.hor_roll_start, 
+                pitch=self.hor_pitch_start, 
+                yaw=self.hor_yaw_start, 
                 speed=self.between_speed,
                 relative=False, 
-                wait=False
+                wait=False,
             )
             print("Finished setting postion by x y z.")
 
@@ -260,12 +351,12 @@ class ArmMovements():
                 start_y_abs = -1
                 for pair in contour:
                     x, y = pair
-                    y_abs = self.y_start+x
-                    x_abs = self.x_start+y
+                    y_abs = self.hor_y_start+x
+                    x_abs = self.hor_x_start+y
                     if start_x_abs == -1 and start_y_abs == -1:
                         start_x_abs = x_abs
                         start_y_abs = y_abs
-                    path.append([x_abs, y_abs, self.z_start, None, None, None, 50])
+                    path.append([x_abs, y_abs, self.hor_z_start, None, None, None, 50])
                     if prev_x != 0 and prev_y != 0:
                         x_change = x - prev_x
                         y_change = y - prev_y
@@ -282,7 +373,7 @@ class ArmMovements():
                     self.arm.set_position(
                         x=None, 
                         y=None, 
-                        z=self.z_start+self.brush_lift, 
+                        z=self.hor_z_start+self.brush_lift, 
                         roll=None, 
                         pitch=None, 
                         yaw=None, 
@@ -294,7 +385,7 @@ class ArmMovements():
                     self.arm.set_servo_angle(
                         servo_id=6, 
                         angle=0, 
-                        speed=150,
+                        speed=120,
                         is_radian=False, 
                         wait=True
                     )
@@ -302,7 +393,7 @@ class ArmMovements():
                     self.arm.set_position(
                         x=start_x_abs, 
                         y=start_y_abs, 
-                        z=self.z_start+self.brush_lift, 
+                        z=self.hor_z_start+self.brush_lift, 
                         roll=None, 
                         pitch=None, 
                         yaw=None, 
@@ -314,7 +405,7 @@ class ArmMovements():
                     self.arm.set_position(
                         x=None, 
                         y=None, 
-                        z=self.z_start, 
+                        z=self.hor_z_start, 
                         roll=None, 
                         pitch=None, 
                         yaw=None, 
@@ -353,7 +444,7 @@ class ArmMovements():
         self.arm.set_position(
             x=None, 
             y=None, 
-            z=self.z_start+self.pot_lift, 
+            z=self.hor_z_start+self.pot_lift, 
             roll=None, 
             pitch=None, 
             yaw=None, 
@@ -363,8 +454,8 @@ class ArmMovements():
         )
         # Move to paint pot
         self.arm.set_position(
-            x=self.x_start+self.x_dist_reload, 
-            y=self.y_start+self.y_dist_reload, 
+            x=self.hor_x_start+self.x_dist_reload, 
+            y=self.hor_y_start+self.y_dist_reload, 
             z=None, 
             roll=None, 
             pitch=None, 
@@ -377,7 +468,7 @@ class ArmMovements():
         self.arm.set_position(
             x=None, 
             y=None, 
-            z=self.z_start, 
+            z=self.hor_z_start, 
             roll=None, 
             pitch=None, 
             yaw=None, 
@@ -394,7 +485,7 @@ class ArmMovements():
         self.arm.set_position(
             x=None, 
             y=None, 
-            z=self.z_start+self.pot_lift, 
+            z=self.hor_z_start+self.pot_lift, 
             roll=None, 
             pitch=None, 
             yaw=None, 
@@ -404,12 +495,12 @@ class ArmMovements():
         )
         # Move back to above start postion
         self.arm.set_position(
-            x=self.x_start, 
-            y=self.y_start, 
-            z=self.z_start+self.pot_lift, 
-            roll=self.roll_start, 
-            pitch=self.pitch_start, 
-            yaw=self.yaw_start, 
+            x=self.hor_x_start, 
+            y=self.hor_y_start, 
+            z=self.hor_z_start+self.pot_lift, 
+            roll=self.hor_roll_start, 
+            pitch=self.hor_pitch_start, 
+            yaw=self.hor_yaw_start, 
             speed=self.between_speed,
             relative=False, 
             wait=False

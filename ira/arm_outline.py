@@ -12,6 +12,10 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+from ultralytics import YOLO
+import cv2
+import numpy as np
+
 # TODO what do I want to get from here?
 # Need to look into arm commands more
 # A series of straight points along the line that 
@@ -30,8 +34,7 @@ class Outline():
                 os.makedirs(self.image_dir)
             except Exception as e:
                 print(f"Failed to create directory {self.image_dir}: {str(e)}")
-                return
-
+        self.beard_model_dir = os.path.join(parent_dir, "resource")
 
     def draw_smooth_curve(self, image, points, closed=False):
         """
@@ -99,10 +102,12 @@ class Outline():
         Finds contours using opencv function.
         Returns a list of coordinate arrays, along with image dimensions.
         These can then be turned into paths for robot motion.
-
         """
 
-        image = cv2.GaussianBlur(input_image, (5, 5), 0)
+        with_beard = self.get_beard_outline(input_image)
+        resized_with_beard, padding = self.resize_and_pad(with_beard, 1028, 1028)
+
+        image = cv2.GaussianBlur(input_image, (3, 3), 0)
 
         # Get Canny edge detection image
         canny_image = self.no_background_canny(image)
@@ -112,7 +117,9 @@ class Outline():
         resized_image, padding = self.resize_and_pad(image, 1028, 1028)
         features_image = self.find_facial_features(resized_image, canny_image)
         # Combine canny with facial features
-        final_image = cv2.bitwise_or(use_canny_image, features_image)
+        pre_final_image = cv2.bitwise_or(use_canny_image, features_image)
+        # Combine with beard
+        final_image = cv2.bitwise_or(pre_final_image, resized_with_beard)
         # Save the image to the specified path
         cv2.imwrite(os.path.join(self.image_dir, "with_features.png"), final_image)
 
@@ -138,12 +145,36 @@ class Outline():
         cropped_image = binary_image[padding[0]:height, 0:new_width]
 
         # Find contours of the white lines
-        contours, _ = cv2.findContours(cropped_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(cropped_image, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+
+        # # Return only outer contours
+        # outer_contours = []
+        # for num, array in enumerate(hierarchy[0]):
+        #     print("Hierarchy array: ", array)
+        #     if array[3] == -1:
+        #         outer_contours.append(contours[num])
+
+        merged_contours = []
+        used = np.zeros(len(contours), dtype=bool)
+        distance_threshold = 15  # Adjust this threshold based on your needs
+        
+        for i, cnt1 in enumerate(contours):
+            if used[i]:
+                continue
+            merged_cnt = cnt1
+            for j, cnt2 in enumerate(contours):
+                if i != j and not used[j]:
+                    dist = np.linalg.norm(np.mean(cnt1, axis=0) - np.mean(cnt2, axis=0))
+                    if dist < distance_threshold:
+                        merged_cnt = np.vstack((merged_cnt, cnt2))
+                        used[j] = True
+            merged_contours.append(merged_cnt)
+            used[i] = True
 
         # Find the lengths and keep only the longer contours
         contour_lengths = []
         long_contours = []
-        for contour in contours:
+        for contour in merged_contours:
             length = cv2.arcLength(contour, True)  # True indicates the contour is closed
             contour_lengths.append(length)
             if length > 10:
@@ -160,7 +191,7 @@ class Outline():
 
         # Optionally draw the path on the original image to visualize
         output_image = cv2.cvtColor(cropped_image, cv2.COLOR_GRAY2BGR)
-        cv2.drawContours(output_image, contours, -1, (255,0,0), 1)
+        cv2.drawContours(output_image, merged_contours, -1, (255,0,0), 1)
         cv2.drawContours(output_image, long_contours, -1, (0,255,0), 1)
 
         # Display the result
@@ -177,6 +208,65 @@ class Outline():
         print("image dimensions: ", cropped_image.shape[1], cropped_image.shape[0] )
 
         return path_points, cropped_image.shape[1], cropped_image.shape[0] # image points, image x dimension, image y dimension
+    
+    def get_beard_outline(self, image):
+        """
+        Get white outline line for beard, if there is one.
+        """
+
+        # Load your custom YOLOv8 model
+        model = YOLO(os.path.join(self.beard_model_dir, "best_hair_117_epoch_v4.pt"))
+
+        if image is None:
+            print(f"Error: Unable to open image.")
+            exit()
+
+        # Create a black background image of the same size as the original image
+        black_background = np.zeros_like(image) 
+
+        # Perform inference
+        results = model(image)
+
+        # Process the results
+        for result in results:
+            # Print out the detected objects and their confidence scores
+            print(f"Detected {len(result.boxes)} objects")
+
+            print("Result: ", result)
+
+            # Check if masks are available
+            if result.masks:
+                for i, mask in enumerate(result.masks.data):
+                    class_id = int(result.boxes.cls[i].item())  # Ensure the class ID is an integer
+                    class_name = result.names[class_id]
+
+                    # Only process masks for the 'beard' class
+                    if class_name == 'beard':
+                        # Convert mask to a NumPy array if it's not already
+                        mask = mask.cpu().numpy() if hasattr(mask, 'cpu') else mask
+
+                        # Resize mask to fit the original image dimensions
+                        mask = cv2.resize(mask, (image.shape[1], image.shape[0]))
+
+                        # Convert mask to binary
+                        _, binary_mask = cv2.threshold(mask, 0.5, 1, cv2.THRESH_BINARY)
+
+                        # Convert binary mask to uint8 type
+                        binary_mask = (binary_mask * 255).astype(np.uint8)
+
+                        # Find contours from the binary mask
+                        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                        # Draw contours on the original image with a white color and a thickness of 1 pixel
+                        cv2.drawContours(black_background, contours, -1, (255, 255, 255), 1)
+
+        # Convert the image to grayscale (black and white)
+        gray_image = cv2.cvtColor(black_background, cv2.COLOR_BGR2GRAY)
+
+        # Save or display the labeled image
+        cv2.imwrite(os.path.join(self.image_dir, "beard_outline.png"), gray_image)
+
+        return gray_image
     
     def no_background_canny(self, image):
         """

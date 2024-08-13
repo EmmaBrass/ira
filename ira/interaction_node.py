@@ -93,16 +93,13 @@ class InteractionNode(Node):
         Loads it in as the latest image.
         """
         # Display the message on the console
-        self.get_logger().info("In lastest_image_callback")
         self.latest_image = bridge.imgmsg_to_cv2(msg, 'bgr8')
 
     def arm_complete_callback(self, msg):
         """
         Callback function for receving completion status of an arm command.
         """
-        self.get_logger().info("In arm_completion_callback")
         if msg.seq == self.seq:
-            self.get_logger().info(str(msg.seq))
             if msg.complete == True:
                 self.prev_arm_complete[self.seq] = True
 
@@ -110,15 +107,12 @@ class InteractionNode(Node):
         """
         Callback function for receving completion status of a gpt command.
         """
-        self.get_logger().info("In gpt_completion_callback")
         if msg.seq == self.seq:
             if msg.complete == True:
                 self.prev_gpt_complete[self.seq] = True
 
     def publish_state(self, state: str):
-        self.get_logger().info("Publishing system state")
         msg = SystemState()
-        self.get_logger().info(f'Current self.seq in publish_state method: {self.seq}')
         msg.seq = self.seq
         msg.state = state
         for i in range(5):
@@ -133,6 +127,10 @@ class InteractionNode(Node):
         and publishes to other topics if in the appropriate state.
         """
         self.get_logger().info(f'Current system state: {self.state_machine.state}')
+        if self.state_machine.state == 'painting':
+            for i in range(5):
+                self.cropped_face_publisher.publish(self.cropped_image) 
+            time.sleep(2)
         # Publish the current state, to start arm and GPT processes.
         self.publish_state(str(self.state_machine.state))
         
@@ -168,9 +166,6 @@ class InteractionNode(Node):
             elif self.state_machine.state == 'gone':
                 self.gone()
             elif self.state_machine.state == 'painting':
-                for i in range(5):
-                    self.cropped_face_publisher.publish(self.cropped_image) 
-                time.sleep(2)
                 self.painting()
             elif self.state_machine.state == 'completed':
                 self.completed()
@@ -233,7 +228,7 @@ class InteractionNode(Node):
         else:
             self.get_logger().info('No face found in image')
             self.foi = None
-            if self.noone_counter > 5:
+            if self.noone_counter > 2:
                 self.noone_counter = 0
                 self.state_machine.to_found_noone()
             else:
@@ -257,6 +252,7 @@ class InteractionNode(Node):
         if self.foi not in frame_face_objects:
             # FOI has disappeared... back to scanning
             self.scan_counter = 0
+            self.noone_counter += 1
             self.state_machine.to_scanning()
         else:
             if self.foi.close == True:
@@ -271,6 +267,7 @@ class InteractionNode(Node):
                 else:
                     # Face is too far away and have scanned <2 times
                     self.scan_counter += 1
+                    self.noone_counter += 1
                     self.state_machine.to_scanning()
 
     def found_known(self):
@@ -284,6 +281,7 @@ class InteractionNode(Node):
         if self.foi not in frame_face_objects:
             # FOI has disappeared... back to scanning
             self.scan_counter = 0
+            self.noone_counter += 1
             self.state_machine.to_scanning()
         else:
             if self.foi.close == True:
@@ -308,13 +306,14 @@ class InteractionNode(Node):
                     # Interacted with before
                     self.state_machine.to_interaction_known()
             else:
-                if self.scan_counter > 2:
-                    # Face is too far away and have scanned >2 times already
+                if self.scan_counter > 1:
+                    # Face is too far away and have scanned >1 times already
                     self.scan_counter = 0
                     self.state_machine.to_too_far()
                 else:
-                    # Face is too far away and have scanned <3 times
+                    # Face is too far away and have scanned <2 times
                     self.scan_counter += 1
+                    self.noone_counter += 1
                     self.state_machine.to_scanning()
 
     def say_painted_recently(self):
@@ -494,8 +493,6 @@ class InteractionNode(Node):
 
             if not face_locations:
                 self.get_logger().info(f'No faces found!')
-                # No faces found - continue scanning
-                self.state_machine.to_scanning()
             else:
                 # For all faces in the frame, update or make a Face object and 
                 # add it to frame_face_objects
@@ -617,7 +614,7 @@ class InteractionNode(Node):
         """
         whole_image_size = image_width*image_height
 
-        if size >= (whole_image_size/8):
+        if size >= (whole_image_size/15):
             return True
         else:
             return False

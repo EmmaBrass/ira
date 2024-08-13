@@ -22,8 +22,9 @@ class Camera():
     def read(self):
         for i in range(10):
             ret, frame = self.cam.read() 
-
-        return frame
+        if self.port_num == 4:
+            frame_final = cv2.flip(frame, 0)
+        return frame_final
 
     def release(self):
         return self.cam.release()
