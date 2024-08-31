@@ -24,7 +24,7 @@ class GPTNode(Node):
         self.state_seq = -1
 
         # Initialise publishers
-        self.gpt_complete_publisher = self.create_publisher(GptComplete, 'gpt_complete', 10) #TODO create a custom message type for this?
+        self.gpt_complete_publisher = self.create_publisher(GptComplete, 'gpt_complete', 10)
 
         # Initialise subscribers
         self.latest_image_subscription = self.create_subscription(

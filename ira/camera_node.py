@@ -16,9 +16,9 @@ class CameraNode(Node):
     def __init__(self):
         super().__init__('camera_node')
         self.declare_parameter('sim', False)
-        self.declare_parameter('cam_id', 4)
+        self.declare_parameter('cam_id', 0)
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
-        self.cam_port = 4
+        self.cam_port = 0
 
         self.camera = Camera(port_num=self.cam_port)
         self.bridge = CvBridge()

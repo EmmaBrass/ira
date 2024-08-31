@@ -11,6 +11,8 @@ from scipy.interpolate import splprep, splev
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from skimage.morphology import skeletonize
+from scipy.spatial import distance
 
 from ultralytics import YOLO
 import cv2
@@ -144,70 +146,66 @@ class Outline():
         # Crop the image using array slicing
         cropped_image = binary_image[padding[0]:height, 0:new_width]
 
-        # Find contours of the white lines
-        contours, hierarchy = cv2.findContours(cropped_image, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        # Skeletonize the image
+        skeleton = skeletonize(cropped_image)
+        # Convert the skeletonized image to uint8 (0 or 255)
+        skeleton_uint8 = (skeleton * 255).astype(np.uint8)
+        # Save the image using OpenCV
+        cv2.imwrite(os.path.join(self.image_dir, "skeleton.png"), skeleton_uint8)
 
-        # # Return only outer contours
-        # outer_contours = []
-        # for num, array in enumerate(hierarchy[0]):
-        #     print("Hierarchy array: ", array)
-        #     if array[3] == -1:
-        #         outer_contours.append(contours[num])
+        # Get the coordinates of the path
+        path_coordinates = np.column_stack(np.where(skeleton > 0))
 
-        merged_contours = []
-        used = np.zeros(len(contours), dtype=bool)
-        distance_threshold = 15  # Adjust this threshold based on your needs
+        # Sort path cooridnates
+        sorted_paths = []
+        current_path = [path_coordinates[0]]
+        path_coordinates = np.delete(path_coordinates, 0, 0)
+        distance_threshold = 5
+
+        while len(path_coordinates) > 0:
+            last_point = current_path[-1]
+            distances = distance.cdist([last_point], path_coordinates)
+            nearest_index = np.argmin(distances)
+            nearest_distance = distances[0, nearest_index]
+
+            if nearest_distance > distance_threshold:
+                # If the nearest point is too far, start a new path
+                sorted_paths.append(np.array(current_path))
+                current_path = [path_coordinates[nearest_index]]
+            else:
+                # Otherwise, continue adding to the current path
+                current_path.append(path_coordinates[nearest_index])
         
-        for i, cnt1 in enumerate(contours):
-            if used[i]:
-                continue
-            merged_cnt = cnt1
-            for j, cnt2 in enumerate(contours):
-                if i != j and not used[j]:
-                    dist = np.linalg.norm(np.mean(cnt1, axis=0) - np.mean(cnt2, axis=0))
-                    if dist < distance_threshold:
-                        merged_cnt = np.vstack((merged_cnt, cnt2))
-                        used[j] = True
-            merged_contours.append(merged_cnt)
-            used[i] = True
+            path_coordinates = np.delete(path_coordinates, nearest_index, 0)
 
-        # Find the lengths and keep only the longer contours
-        contour_lengths = []
-        long_contours = []
-        for contour in merged_contours:
-            length = cv2.arcLength(contour, True)  # True indicates the contour is closed
-            contour_lengths.append(length)
-            if length > 10:
-                long_contours.append(contour)
-        print("contour_lengths", contour_lengths)
+        # Append the last path if it's not empty
+        if current_path:
+            sorted_paths.append(np.array(current_path))
 
-        # Extract the coordinates of the contours
-        path_points = []
-        for contour in long_contours:
-            contour_points = []
-            for point in contour:
-                contour_points.append(tuple(point[0]))  # Each point is a tuple of (x, y)
-            path_points.append(contour_points)
+        print("sorted_paths", sorted_paths)
 
-        # Optionally draw the path on the original image to visualize
-        output_image = cv2.cvtColor(cropped_image, cv2.COLOR_GRAY2BGR)
-        cv2.drawContours(output_image, merged_contours, -1, (255,0,0), 1)
-        cv2.drawContours(output_image, long_contours, -1, (0,255,0), 1)
-
-        # Display the result
-        cv2.imshow('Path Visualization', output_image)
-        cv2.waitKey(0)
+        # Create a black background image
+        paths_image = np.zeros(cropped_image.shape, dtype=np.uint8)
+        
+        for path in sorted_paths:
+            # Draw each path on the image
+            for i in range(len(path) - 1):
+                # Get start and end points
+                start_point = tuple(path[i])
+                end_point = tuple(path[i + 1])
+                
+                # Draw a line between consecutive points
+                cv2.line(paths_image, start_point, end_point, color=255, thickness=1)
+        
+        # Display the result using OpenCV
+        cv2.imshow('paths_image', paths_image)
+        cv2.waitKey(0)  # Wait for a key press to close the window
         cv2.destroyAllWindows()
 
-        # Save the path visualization (optional)
-        image_path = os.path.join(self.image_dir, "path_visualization.png")
-        cv2.imwrite(image_path, output_image)
+        #  Save the image to the specified path
+        cv2.imwrite(os.path.join(self.image_dir, "paths_visualisation.png"), paths_image)
 
-        # Print the path points
-        print("Path points:", path_points)
-        print("image dimensions: ", cropped_image.shape[1], cropped_image.shape[0] )
-
-        return path_points, cropped_image.shape[1], cropped_image.shape[0] # image points, image x dimension, image y dimension
+        return sorted_paths, cropped_image.shape[1], cropped_image.shape[0] # image points, image x dimension, image y dimension
     
     def get_beard_outline(self, image):
         """

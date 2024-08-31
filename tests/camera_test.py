@@ -25,7 +25,7 @@ class Camera():
         #     #     cam_id = int(item.split("[")[2].split(']')[0])
         # self.logger.info("Ultra HD 4K ID is: %s", cam_id)
 
-        cam_id = 4 #s"/dev/video4"
+        cam_id = 0 #s"/dev/video4"
         self.cam = cv2.VideoCapture(cam_id)
         if not self.cam.isOpened():
             print("Error: Could not open the USB camera.")
@@ -40,11 +40,9 @@ class Camera():
         time.sleep(1)
 
     def read(self):
-        for i in range(2):
+        for i in range(5):
             time.sleep(0.2)
-            ret, frame_flipped = self.cam.read() 
-            print("flipping!!!")
-            frame = cv2.flip(frame_flipped, 0)
+            ret, frame = self.cam.read() 
         return frame
 
     def release(self):
