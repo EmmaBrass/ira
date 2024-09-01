@@ -2,7 +2,7 @@ import serial
 import random
 import time
 
-from ira.eye_control import EyeControl
+from ira_common.eye_control import EyeControl
 
 
 eyes_port = '/dev/ttyACM0'

@@ -8,8 +8,8 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from std_msgs.msg import Int16MultiArray
 
-from ira.arm_movements import ArmMovements
-from ira.arm_outline import Outline
+from ira_common.arm_movements import ArmMovements
+from ira_common.arm_outline import Outline
 
 from ira_interfaces.msg import ArmComplete
 from ira_interfaces.msg import SystemState

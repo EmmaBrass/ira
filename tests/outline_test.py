@@ -1,5 +1,5 @@
-from ira.arm_outline import Outline
-from ira.arm_movements import ArmMovements
+from ira_common.arm_outline import Outline
+from ira_common.arm_movements import ArmMovements
 from subprocess import PIPE, run
 import cv2
 

@@ -7,7 +7,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from std_msgs.msg import Int16MultiArray
 
-from ira.camera import Camera
+from ira_common.camera import Camera
 
 import time
 

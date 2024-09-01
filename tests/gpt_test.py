@@ -1,6 +1,6 @@
 
 import time
-from ira.general_gpt import GPT
+from ira_common.general_gpt import GPT
 
 
 gpt = GPT()

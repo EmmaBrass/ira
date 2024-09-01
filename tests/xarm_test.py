@@ -10,8 +10,8 @@
 Test script for xArm6
 """
 
-from ira.arm_movements import ArmMovements
-import ira.configuration as config
+from ira_common.arm_movements import ArmMovements
+import ira_common.configuration as config
 
 movements = ArmMovements()
 

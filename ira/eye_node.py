@@ -7,7 +7,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from std_msgs.msg import Int16MultiArray
 
-from ira.eye_control import EyeControl
+from ira_common.eye_control import EyeControl
 
 from ira_interfaces.msg import SystemState
 from ira_interfaces.msg import FoiCoord

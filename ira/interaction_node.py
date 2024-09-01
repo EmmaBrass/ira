@@ -8,7 +8,7 @@ import cv2, pickle, os, time
 from datetime import datetime
 import numpy as np
 import face_recognition
-from ira.face import Face
+from ira_common.face import Face
 from ira.interaction_state_machine import InterationStateMachine
 
 from ira_interfaces.msg import SystemState

@@ -6,7 +6,7 @@ from sensor_msgs.msg import CameraInfo, Image
 from cv_bridge import CvBridge, CvBridgeError
 bridge = CvBridge()
 
-from ira.general_gpt import GPT
+from ira_common.general_gpt import GPT
 
 from ira_interfaces.msg import GptComplete
 from ira_interfaces.msg import SystemState
