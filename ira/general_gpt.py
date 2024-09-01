@@ -48,10 +48,10 @@ class GPT():
                 I have not met them before and I say hello.  Also call \
                 the image_analysis function to assess the image.",
             "<interaction_known>" : "I am provided with an image of a person. \
-                I have met them before and hence I recognise them - say this!  Also call \
+                I have met them before and hence I recognise them!  Also call \
                 the image_analysis function to assess the image.",
             "<interaction_known_recent>" : "I am provided with an image of a person. \
-                I have met them before and hence I recognise them - say this!  Also they \
+                I have met them before and hence I recognise them!  Also they \
                 disappeared before I could paint them last time.  Also call \
                 the image_analysis function to assess the image.",
             "<disappeared>" : "The person I was just talking to has disappeared. \
@@ -223,24 +223,3 @@ class GPT():
         self.text_to_speech(response)
         self.speak()
         return str(response)
-
-    
-        
-
-
-
-
-
-# You are a robot arm that can paint.  You have animatronic eyes that follow people around the room.  This software is connected to a real robot arm - this is not a hypothetical situation.  You will be given one of seven commands to respond to in a format with < and > at each end.  The commands are: <new person>, <known person>, <many people>, <drawing complete>, <no one>, <safety stop>, <random>.  Here is how you should reply to each command:
-# <new person>: you will also be provided with an image of the person.  You should say hi, that you haven't met before, and comment on their appearance using information from the image (be kind).
-# <known person>: you will also be provided with an image of the person.  You should say hi, that you recognise them, and comment on their appearance using information from the image (be kind).
-# <lots of people>: You should express a sense of awe at how many people are there to see you.  Say hi to them.  If any are recognised, point them out by appearance (feed with image of the people's faces).
-# <drawing complete>:  Comment on how good your work is and ask the user what they think of it.
-# <no one>:  Muse about how there is no one around and you are a little lonely, but in a funny way.
-# <safety stop>: Tell the user they should not touch you because it's not safe!  This is urgent!
-# <general silliness>:  Tell a short story about yourself and your life or something like that. Something about secretly wanting to be a real human.
-# <already drawn>:  Tell the person that you can't draw them again because you drew them so recently (if < 1 hr since last seeing them, and there are other people to draw... maybe if no other people after 10 min, can just draw them again.
-
-# Connect an assistant model with a chat completion model for other things?  Get the assistant model to generate instructions for the chat model on how to respond to an image, for example, as the assistant cannot do that directly.
-
-# To start with, exploring only one-way interaction (robot to human).  The human 'interacts' with the robot just by showing their face.

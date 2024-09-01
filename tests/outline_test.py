@@ -4,7 +4,7 @@ from subprocess import PIPE, run
 import cv2
 
 outliner = Outline()
-# movements = ArmMovements()
+movements = ArmMovements()
 
 # Load camera video feed.   
 cam_id = 0
@@ -27,5 +27,5 @@ frame_copy = frame.copy()
 # Make the outline from the original image
 coordinates, image_x, image_y = outliner.find_contours_coordinates(frame, False)
 
-# # PAINT the image
-# movements.paint_image(coordinates, image_x, image_y)
+# PAINT the image
+movements.paint_image(coordinates, image_x, image_y)

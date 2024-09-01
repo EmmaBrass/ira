@@ -36,7 +36,11 @@ class Outline():
                 os.makedirs(self.image_dir)
             except Exception as e:
                 print(f"Failed to create directory {self.image_dir}: {str(e)}")
-        self.beard_model_dir = os.path.join(parent_dir, "resource")
+
+        self.beard_model_path = '/home/emma/ira_ws/src/ira/resource/best_hair_117_epoch_v4.pt'
+        if not os.path.exists(self.beard_model_path):
+            print(f"Beard model path does not exist: {self.beard_model_path}")
+
 
     def draw_smooth_curve(self, image, points, closed=False):
         """
@@ -154,7 +158,7 @@ class Outline():
         cv2.imwrite(os.path.join(self.image_dir, "skeleton.png"), skeleton_uint8)
 
         # Get the coordinates of the path
-        path_coordinates = np.column_stack(np.where(skeleton > 0))
+        path_coordinates = np.column_stack(np.where(skeleton > 0)) # in format (y,x)
 
         # Sort path cooridnates
         sorted_paths = []
@@ -184,10 +188,17 @@ class Outline():
 
         print("sorted_paths", sorted_paths)
 
+        # Flip the (y,x) values to be (x,y)
+        flipped_paths = []
+        for path in sorted_paths:
+            # Flip each coordinate from (y, x) to (x, y)
+            flipped_path = [(x, y) for (y, x) in path]
+            flipped_paths.append(np.array(flipped_path))
+
         # Create a black background image
         paths_image = np.zeros(cropped_image.shape, dtype=np.uint8)
         
-        for path in sorted_paths:
+        for path in flipped_paths:
             # Draw each path on the image
             for i in range(len(path) - 1):
                 # Get start and end points
@@ -195,7 +206,7 @@ class Outline():
                 end_point = tuple(path[i + 1])
                 
                 # Draw a line between consecutive points
-                cv2.line(paths_image, start_point, end_point, color=255, thickness=1)
+                cv2.line(paths_image, start_point, end_point, color=255, thickness=1) # assumes format (x,y)
         
         # Display the result using OpenCV
         cv2.imshow('paths_image', paths_image)
@@ -205,7 +216,7 @@ class Outline():
         #  Save the image to the specified path
         cv2.imwrite(os.path.join(self.image_dir, "paths_visualisation.png"), paths_image)
 
-        return sorted_paths, cropped_image.shape[1], cropped_image.shape[0] # image points, image x dimension, image y dimension
+        return flipped_paths, cropped_image.shape[1], cropped_image.shape[0] # image points, image x dimension, image y dimension
     
     def get_beard_outline(self, image):
         """
@@ -213,7 +224,7 @@ class Outline():
         """
 
         # Load your custom YOLOv8 model
-        model = YOLO(os.path.join(self.beard_model_dir, "best_hair_117_epoch_v4.pt"))
+        model = YOLO(self.beard_model_path)
 
         if image is None:
             print(f"Error: Unable to open image.")

@@ -228,7 +228,7 @@ class InteractionNode(Node):
         else:
             self.get_logger().info('No face found in image')
             self.foi = None
-            if self.noone_counter > 2:
+            if self.noone_counter > 1:
                 self.noone_counter = 0
                 self.state_machine.to_found_noone()
             else:
@@ -311,7 +311,7 @@ class InteractionNode(Node):
                     self.scan_counter = 0
                     self.state_machine.to_too_far()
                 else:
-                    # Face is too far away and have scanned <2 times
+                    # Face is too far away and have scanned <1 times
                     self.scan_counter += 1
                     self.noone_counter += 1
                     self.state_machine.to_scanning()
