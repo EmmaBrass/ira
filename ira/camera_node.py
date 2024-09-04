@@ -9,7 +9,7 @@ from std_msgs.msg import Int16MultiArray
 
 from ira_common.camera import Camera
 
-import time
+import time, cv2
 
 class CameraNode(Node):
         
@@ -18,7 +18,7 @@ class CameraNode(Node):
         self.declare_parameter('sim', False)
         self.declare_parameter('cam_id', 0)
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
-        self.cam_port = 0
+        self.cam_port = 4
 
         self.camera = Camera(port_num=self.cam_port)
         self.bridge = CvBridge()
