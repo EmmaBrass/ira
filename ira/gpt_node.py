@@ -83,10 +83,10 @@ class GPTNode(Node):
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_unknown':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found>")
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_unknown>")
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_known':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found>")
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_known>")
                 self.gpt_complete(msg.seq)
             elif msg.state == 'say_painted_recently':
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <say_painted_recently>")
@@ -96,31 +96,8 @@ class GPTNode(Node):
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <too_far>")
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
-            elif msg.state == 'interaction_unknown':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_unknown>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png")
-                self.get_logger().info(response)
-                self.gpt_complete(msg.seq)
-            elif msg.state == 'interaction_known':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png")
-                self.get_logger().info(response)
-                self.gpt_complete(msg.seq)
-            elif msg.state == 'interaction_known_recent':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_known_recent>.  The image path: /home/emma/ira_ws/src/ira/ira/images/latest_image.png")
-                self.get_logger().info(response)
-                self.gpt_complete(msg.seq)
-            elif msg.state == 'disappeared':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <disappeared>")
-                self.get_logger().info(response)
-                self.gpt_complete(msg.seq)
-            elif msg.state == 'interaction_returned':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <interaction_returned>")
-                self.get_logger().info(response)
-                self.gpt_complete(msg.seq)
-            elif msg.state == 'gone':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <gone>")
-                self.get_logger().info(response)
-                self.gpt_complete(msg.seq)
             elif msg.state == 'painting':
+                time.sleep(20)
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <painting>")
                 self.get_logger().info(response)
                 time.sleep(30)

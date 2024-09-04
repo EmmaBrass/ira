@@ -72,25 +72,13 @@ class EyeNode(Node):
         elif msg.state == 'found_noone':
             self.eye_state = "straight"
         elif msg.state == 'found_unknown':
-            self.eye_state = "straight"
+            self.eye_state = "focus"
         elif msg.state == 'found_known':
-            self.eye_state = "straight"
+            self.eye_state = "focus"
         elif msg.state == 'say_painted_recently':
             self.eye_state = "focus"
         elif msg.state == 'too_far':
             self.eye_state = "default"
-        elif msg.state == 'interaction_unknown':
-            self.eye_state = "focus"
-        elif msg.state == 'interaction_known':
-            self.eye_state = "focus"
-        elif msg.state == 'interaction_known_recent':
-            self.eye_state = "focus"
-        elif msg.state == 'disappeared':
-            self.eye_state = "default"
-        elif msg.state == 'interaction_returned':
-            self.eye_state = "focus"
-        elif msg.state == 'gone':
-            self.eye_state = "straight"
         elif msg.state == 'painting':
             self.eye_state = "default"
         elif msg.state == 'completed':

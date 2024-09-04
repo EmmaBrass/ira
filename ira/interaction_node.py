@@ -42,7 +42,6 @@ class InteractionNode(Node):
         self.state_machine = InterationStateMachine()
         self.foi = None # face of interest
         self.scan_counter = 0
-        self.disappeared_counter = 0
         self.noone_counter = 0
 
         self.latest_image = None
@@ -153,18 +152,6 @@ class InteractionNode(Node):
                 self.say_painted_recently()
             elif self.state_machine.state == 'too_far':
                 self.too_far()
-            elif self.state_machine.state == 'interaction_unknown': #TODO centre the face? probably no
-                self.interaction_unknown()
-            elif self.state_machine.state == 'interaction_known': #TODO centre the face? no
-                self.interaction_known()
-            elif self.state_machine.state == 'interaction_known_recent': #TODO centre the face? no
-                self.interaction_known_recent()
-            elif self.state_machine.state == 'disappeared':
-                self.disappeared()
-            elif self.state_machine.state == 'interaction_returned': #TODO centre the face? no
-                self.interaction_returned()
-            elif self.state_machine.state == 'gone':
-                self.gone()
             elif self.state_machine.state == 'painting':
                 self.painting()
             elif self.state_machine.state == 'completed':
@@ -258,7 +245,13 @@ class InteractionNode(Node):
             if self.foi.close == True:
                 # Face is present and close 
                 self.scan_counter = 0
-                self.state_machine.to_interaction_unknown()
+                # Find the foi in self.all_faces
+                # Update the object with the interaction
+                for face in self.all_faces:
+                    if np.array_equal(face.encoding, self.foi.encoding):
+                        face.add_interaction(datetime.now(), "found_unknown")
+                # Paint them!
+                self.state_machine.to_painting()
             else:
                 if self.scan_counter > 1 :
                     # Face is too far away and have scanned >1 times already
@@ -273,8 +266,8 @@ class InteractionNode(Node):
     def found_known(self):
         """
         Method for the 'found_known' state.
-        Check if painted recently, interacted with recently (but not painted), 
-        painted at some point before, close enough.
+        Check if painted recently, if close enough to paint,
+        painted at some point before.
         """
         frame_face_objects = self.find_faces()
 
@@ -287,6 +280,11 @@ class InteractionNode(Node):
             if self.foi.close == True:
                 # Face is present and close enough
                 self.scan_counter = 0
+                # Find the foi in self.all_faces
+                # Update the object with the interaction
+                for face in self.all_faces:
+                    if np.array_equal(face.encoding, self.foi.encoding):
+                        face.add_interaction(datetime.now(), "found_known")
                 last_painting =  datetime(1900, 1, 1)
                 last_interaction = None
                 if len(self.foi.past_interactions) > 0:
@@ -299,12 +297,9 @@ class InteractionNode(Node):
                 if duration_in_s < 10 and last_interaction != 'gone': #TODO edit the duration_is_s to be whatever needed - add to constants.py
                     # Painted too recently to paint again
                     self.state_machine.to_say_painted_recently()
-                elif last_interaction == 'gone':
-                    # Interacted with before but most recently disappeared before painting
-                    self.state_machine.to_interaction_known_recent()
                 else:
-                    # Interacted with before
-                    self.state_machine.to_interaction_known()
+                    # Paint them!
+                    self.state_machine.to_painting()
             else:
                 if self.scan_counter > 1:
                     # Face is too far away and have scanned >1 times already
@@ -331,120 +326,13 @@ class InteractionNode(Node):
         """
         self.state_machine.to_scanning()
 
-    def interaction_unknown(self):
-        """
-        Method for 'interaction_unknown' state.
-        If the person is still around, move forward to doing the painting! (Maybe just after x seconds...)
-        If the person disappears, then move to disappeared state instead of painting.
-        """
-        # find the foi in self.all_faces
-        # update the object with the interaction
-        for face in self.all_faces:
-            if np.array_equal(face.encoding, self.foi.encoding):
-                face.add_interaction(datetime.now(), "interaction_unknown")
-
-        frame_face_objects = self.find_faces()
-        if self.foi not in frame_face_objects:
-            # FOI has disappeared... to disappeared state.
-            self.state_machine.to_disappeared()
-        else:
-            self.state_machine.to_painting()
-
-    def interaction_known(self):
-        """
-        Method for 'interaction_known' state.
-        If the person is still around, move to doing the painting!
-        If the person disappears, then move to disappeared state instead of painting.
-        """
-        # find the foi in self.all_faces
-        # update the object with the interaction
-        for face in self.all_faces:
-            if np.array_equal(face.encoding, self.foi.encoding):
-                face.add_interaction(datetime.now(), "interaction_known")
-
-        frame_face_objects = self.find_faces()
-        if self.foi not in frame_face_objects:
-            # FOI has disappeared... to disappeared state.
-            self.state_machine.to_disappeared()
-        else:
-            self.state_machine.to_painting()
-
-    def interaction_known_recent(self):
-        """
-        Method for 'interaction_known_recent' state - interacted with before, but not painted.
-        If the person is still around, move forward to doing the painting!
-        If the person disappears, then move to disappeared state instead of painting.
-        """
-        # find the foi in self.all_faces
-        # update the object with the interaction
-        for face in self.all_faces:
-            if np.array_equal(face.encoding, self.foi.encoding):
-                face.add_interaction(datetime.now(), "interaction_known_recent")
-
-        frame_face_objects = self.find_faces()
-        if self.foi not in frame_face_objects:
-            # FOI has disappeared... to disappeared state.
-            self.state_machine.to_disappeared()
-        else:
-            self.state_machine.to_painting()
-
-    def disappeared(self):
-        """
-        Method for when the person has disappeared.
-        Say they are disappeared again, the person comes back, or they are gone for good.
-        """
-        frame_face_objects = self.find_faces()
-        if self.foi not in frame_face_objects and self.disappeared_counter >= 1:
-            # FOI is gone and has been twice
-            self.disappeared_counter = 0
-            self.state_machine.to_gone()
-        elif self.foi not in frame_face_objects and self.disappeared_counter < 1:
-            # FOI is gone for the first time
-            self.disappeared_counter += 1
-            self.state_machine.to_disappeared()
-        elif self.foi in frame_face_objects:
-            # FOI has returned
-            self.disappeared_counter = 0
-            self.state_machine.to_interaction_returned()
-
-    def interaction_returned(self):
-        """
-        Method for 'interaction_returned' state - interacted with, then disappered, not returned.
-        If the person is still around, move forward to doing the painting! (Maybe just after x seconds...)
-        If the person disappears, then move to disappeared state instead of painting.
-        """
-        # find the foi in self.all_faces
-        # update the object with the interaction
-        for face in self.all_faces:
-            if np.array_equal(face.encoding, self.foi.encoding):
-                face.add_interaction(datetime.now(), "interaction_returned")
-
-        frame_face_objects = self.find_faces()
-        if self.foi not in frame_face_objects:
-            # FOI has disappeared... to disappeared state.
-            self.state_machine.to_disappeared()
-        else:
-            self.state_machine.to_painting()
-
-    def gone(self):
-        """
-        Method for when the person has completely disappearred.
-        Go back to scanning.
-        """
-        # find the foi in self.all_faces
-        # update the object with the interaction
-        for face in self.all_faces:
-            if np.array_equal(face.encoding, self.foi.encoding):
-                face.add_interaction(datetime.now(), "gone")
-        self.state_machine.to_scanning()
-
     def painting(self):
         """
         Method for painting the face.
         Go to completed.
         """
-        # find the foi in self.all_faces
-        # update the object with the interaction
+        # Find the foi in self.all_faces
+        # Update the object with the interaction
         for face in self.all_faces:
             if np.array_equal(face.encoding, self.foi.encoding):
                 face.add_interaction(datetime.now(), "painting")
