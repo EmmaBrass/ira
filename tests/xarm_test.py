@@ -14,6 +14,7 @@ from ira_common.arm_movements import ArmMovements
 import ira_common.configuration as config
 
 movements = ArmMovements()
+movements.initial_position()
 movements.straight_bw_position(20)
 movements.straight_fw_position(20)
 

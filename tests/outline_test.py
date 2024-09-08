@@ -7,7 +7,7 @@ outliner = Outline()
 movements = ArmMovements()
 
 # Load camera video feed.   
-cam_id = 0
+cam_id = 4
 cam = cv2.VideoCapture(cam_id)
 #cam.set(cv2.CAP_PROP_AUTOFOCUS, 0) 
 print("Have turned on camera now")

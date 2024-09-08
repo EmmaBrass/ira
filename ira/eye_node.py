@@ -19,9 +19,9 @@ class EyeNode(Node):
     def __init__(self):
         super().__init__('eye_node')
         self.declare_parameter('sim', False)
-        self.declare_parameter('eyes_port', '/dev/ttyACM0')
+        self.declare_parameter('eyes_port', '/dev/ttyACM1')
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
-        self.eyes_port = '/dev/ttyACM0'
+        self.eyes_port = '/dev/ttyACM1'
 
         self.eyes = EyeControl(com_port=self.eyes_port)
 
