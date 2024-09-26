@@ -55,7 +55,7 @@ class ArmNode(Node):
         # on this node, do the processing for turning that into and outline and then 
         # into a path for the robot arm to follow.
 
-    def cropped_face_callback(self, msg):
+    def cropped_face_callback(self, msg): #TODO change to most recent pic of the canvas ?
         """
         Save the most recent cropped foi image.
         """

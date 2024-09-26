@@ -75,33 +75,32 @@ class GPTNode(Node):
         """
         if msg.seq > self.state_seq:
             self.state_seq = msg.seq
-            if msg.state == 'scanning':
-                self.get_logger().info("GPT received scanning state")
-                self.gpt_complete(msg.seq)
-            elif msg.state == 'found_noone':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_noone>")
+            if msg.state == 'startup':
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <startup>")
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
-            elif msg.state == 'found_unknown':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_unknown>")
-                self.gpt_complete(msg.seq)
-            elif msg.state == 'found_known':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_known>")
-                self.gpt_complete(msg.seq)
-            elif msg.state == 'say_painted_recently':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <say_painted_recently>")
+            elif msg.state == 'your_turn':
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <your_turn>")
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
-            elif msg.state == 'too_far':
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <too_far>")
+            elif msg.state == 'looking':
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <looking>")
+                self.gpt_complete(msg.seq)
+            elif msg.state == 'comment':
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <comment>")
+                self.gpt_complete(msg.seq)
+            elif msg.state == 'my_turn':
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <my_turn>")
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
-            elif msg.state == 'painting':
-                time.sleep(20)
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <painting>")
-                self.get_logger().info(response)
                 time.sleep(30)
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <continue_painting>")
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <still_my_turn>") #TODO way to check this rather than just a timer...
+                # Like don't work about the seq for painting, just check some timer or an extra counter or something so we can come back here again.  
+                # Will be useful for the normal IRa project as well whilst still painting.
+                self.get_logger().info(response)
+                self.gpt_complete(msg.seq)
+            elif msg.state == 'ask_done':
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <ask_done>")
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'completed':

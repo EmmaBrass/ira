@@ -1,7 +1,7 @@
 *.log
-ira/images/*
-ira/__pycache__/*
-ira/logs/*
+ira_collab/images/*
+ira_collab/__pycache__/*
+ira_collab/logs/*
 *.png
 *.jpg
 *.jpeg

@@ -21,7 +21,7 @@ def generate_launch_description():
             description='Port number of the Arduino for the eyes'
         ),
         Node(
-            package='ira',
+            package='ira_collab',
             executable='camera_node',
             name='camera_node',
             parameters=[
@@ -32,7 +32,7 @@ def generate_launch_description():
             arguments=['--ros-args', '--log-level', 'INFO']
         ),
         Node(
-            package='ira',
+            package='ira_collab',
             executable='interaction_node',
             name='interaction_node',
             parameters=[
@@ -42,7 +42,7 @@ def generate_launch_description():
             arguments=['--ros-args', '--log-level', 'INFO']
         ),
         Node(
-            package='ira',
+            package='ira_collab',
             executable='arm_node',
             name='arm_node',
             parameters=[
@@ -52,7 +52,7 @@ def generate_launch_description():
             arguments=['--ros-args', '--log-level', 'INFO']
         ),
         Node(
-            package='ira',
+            package='ira_collab',
             executable='eye_node',
             name='eye_node',
             parameters=[
@@ -63,7 +63,7 @@ def generate_launch_description():
             arguments=['--ros-args', '--log-level', 'INFO']
         ),
         Node(
-            package='ira',
+            package='ira_collab',
             executable='gpt_node',
             name='gpt_node',
             parameters=[

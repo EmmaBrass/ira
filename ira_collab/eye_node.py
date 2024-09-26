@@ -19,17 +19,14 @@ class EyeNode(Node):
     def __init__(self):
         super().__init__('eye_node')
         self.declare_parameter('sim', False)
-        self.declare_parameter('eyes_port', '/dev/ttyACM1')
+        self.declare_parameter('eyes_port', '/dev/ttyACM0')
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
-        self.eyes_port = '/dev/ttyACM1'
+        self.eyes_port = '/dev/ttyACM0'
 
         self.eyes = EyeControl(com_port=self.eyes_port)
 
         self.swirl_complete = False
-
         self.eye_state = "default"
-        self.foi_coordinates = [512,512]
-        self.image_dimensions = [1023, 1023]
 
         timer_period = 2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
@@ -41,46 +38,29 @@ class EyeNode(Node):
             self.system_state_callback, 
             10
         )
-        self.foi_cooridnates_subscription = self.create_subscription(
-            FoiCoord,
-            'foi_coordinates', 
-            self.foi_coordinates_callback, 
-            10
-        )
 
         time.sleep(10)
         self.get_logger().info("Eye node initialised")
         self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
-    def foi_coordinates_callback(self, msg):
-        """
-        Update the coordinates of the face of interest,
-        so that the eyes can point towards the face.
-        """
-        self.get_logger().info("In foi_coordinates_callback")
-        self.foi_coordinates = [msg.x, msg.y]
-        self.image_dimensions = [msg.image_x, msg.image_y]
 
     def system_state_callback(self, msg):
         """
         Callback function for the system state.
         """
         self.get_logger().info("In system state callback for eyes!")
-        if msg.state == 'scanning':
-            self.get_logger().info("In scanning system state for eyes!")
+        if msg.state == 'startup':
             self.eye_state = "default"
-        elif msg.state == 'found_noone':
+        elif msg.state == 'your_turn':
+            self.eye_state = "default"
+        elif msg.state == 'looking':
+            self.eye_state = "down_straight"
+        elif msg.state == 'comment':
+            self.eye_state = "default"
+        elif msg.state == 'my_turn':
+            self.eye_state = "default"
+        elif msg.state == 'ask_done':
             self.eye_state = "straight"
-        elif msg.state == 'found_unknown':
-            self.eye_state = "focus"
-        elif msg.state == 'found_known':
-            self.eye_state = "focus"
-        elif msg.state == 'say_painted_recently':
-            self.eye_state = "focus"
-        elif msg.state == 'too_far':
-            self.eye_state = "default"
-        elif msg.state == 'painting':
-            self.eye_state = "default"
         elif msg.state == 'completed':
             self.eye_state = "swirl"
         else:
@@ -103,12 +83,11 @@ class EyeNode(Node):
             # Look straight ahead (while painting)
             self.eyes.straight()
             self.swirl_complete = False
-        if self.eye_state == "focus":
-            # Focus on the foi
-            foi_x = self.map_value(self.foi_coordinates[0],0,self.image_dimensions[0],1023,0)
-            foi_y = self.map_value(self.foi_coordinates[1],0,self.image_dimensions[1],1023,0)
-            self.eyes.focus(foi_x, foi_y)
+        if self.eye_state == "straight":
+            # Look down for 4 seconds and then straight
+            self.eyes.down_straight()
             self.swirl_complete = False
+
 
     def map_value(self, x, in_min, in_max, out_min, out_max):
         return out_min + ((x - in_min) * (out_max - out_min) / (in_max - in_min))
