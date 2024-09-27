@@ -24,6 +24,7 @@ class InteractionNode(Node):
 
     def __init__(self):
         super().__init__('interaction_node')
+        
         self.declare_parameter('sim', False)
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
