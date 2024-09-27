@@ -15,6 +15,7 @@ from ira_interfaces.msg import SystemState
 from ira_interfaces.msg import ArmComplete
 from ira_interfaces.msg import GptComplete
 from ira_interfaces.msg import FoiCoord
+from ira_interfaces.msg import CanvasImage
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -35,7 +36,8 @@ class InteractionNode(Node):
         self.state_machine = InterationStateMachine()
 
         self.latest_image = None
-        self.cropped_image = None
+        self.before_canvas_image = None
+        self.after_canvas_image = None
 
         self.num_turns = 0
 
@@ -45,7 +47,7 @@ class InteractionNode(Node):
         
         # Initialise publishers
         self.system_state_publisher = self.create_publisher(SystemState, 'system_state', 10)
-        self.cropped_face_publisher = self.create_publisher(Image, 'cropped_face', 10)
+        self.canvas_image_publisher = self.create_publisher(CanvasImage, 'canvas_image', 10)
 
         timer_period = 2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback) # Publishing happens within the timer_callback
@@ -143,14 +145,31 @@ class InteractionNode(Node):
             elif self.state_machine.state == 'completed':
                 self.completed()
 
-    def startup(self):
+    def startup_ready(self):
         """
-        Method for the 'startup' state of the state machine.
-        Ask the GPT to give startup instructions.
+        Method for the robot the ask if human is ready and canvas is in place.
+        Wait for human keyboard input to save the canvas is ready before sending the pic...
         """
-        self.get_logger().info(f'In scanning method')
-        self.state_machine.to_your_turn()
+        self.get_logger().info(f'In startup_ready method')
+        # TODO human input to confirm canvas is ready
+        self.state_machine.to_startup_pic()
 
+    def startup_pic(self):
+        """
+        Method for robot to take initial pic.
+        Arm has moved to look down.
+        GPT has said something.
+        Publish a before canvas image.
+        """
+        self.get_logger().info(f'In startup_pic method')
+        self.before_canvas_image = self.latest_image
+        msg = CanvasImage()
+        msg.image = self.bridge.cv2_to_imgmsg(self.before_canvas_image, "bgr8")
+        msg.type = "before"
+        for i in range(5):
+            self.canvas_image_publisher.publish(msg) 
+        self.state_machine.to_your_turn()
+    
     def your_turn(self):
         """
         Method for it being the human's turn.
@@ -162,22 +181,31 @@ class InteractionNode(Node):
 
     def looking(self):
         """
-        Method for IRA to look at the canvas, take a pic,
-        extract human mark.
+        Method for IRA to look at the canvas, take a pic 
+        for after_canvas_image, and publish it.
         """
         self.get_logger().info(f'In looking method')
+        # When we are in this method, the arm will already be facing down, looking at the canvas.
+        # Hence, take the most recent image and save as the canvas image; publish it.
+        self.after_canvas_image = self.latest_image
+        msg = CanvasImage()
+        msg.image = self.bridge.cv2_to_imgmsg(self.after_canvas_image, "bgr8")
+        msg.type = "after"
+        for i in range(5):
+            self.canvas_image_publisher.publish(msg) 
         self.state_machine.to_comment()
 
     def comment(self):
         """
         Method for commenting on the human mark.
+        The GPT will have commented.
         """
         self.get_logger().info(f'In comment method')
         self.state_machine.to_my_turn()
 
     def my_turn(self):
         """ 
-        Method for IRA taking her turn, saying something,
+        Method for IRA taking her turn, saying something while doing it.
         and taking a reference pic at the end.
         """
         self.get_logger().info(f'In my_turn method')
@@ -185,6 +213,19 @@ class InteractionNode(Node):
             self.state_machine.to_ask_done()
         else:
             self.state_machine.to_your_turn()
+
+    def my_turn_pic(self):
+        """
+        IRA looks down and takes a pic of the canvas for before_canvas_image.
+        Says something about how nice their mark is.
+        """
+        self.get_logger().info(f'In my_turn_pic method')
+        self.before_canvas_image = self.latest_image
+        msg = CanvasImage()
+        msg.image = self.bridge.cv2_to_imgmsg(self.before_canvas_image, "bgr8")
+        msg.type = "before"
+        for i in range(5):
+            self.canvas_image_publisher.publish(msg) 
 
     def ask_done(self):
         """
@@ -194,14 +235,14 @@ class InteractionNode(Node):
         # TODO get user input for if done or not (keyboard).
         self.state_machine.to_your_turn()
         self.state_machine.to_completed()
-
+n
     def completed(self):
         """
         Method for a finished piece.
         GPT comment on it.
         """
         self.get_logger().info(f'In completed method')
-        self.state_machine.to_startup()
+        self.state_machine.to_startup_ready()
 
 def main(args=None):
     rclpy.init(args=args)

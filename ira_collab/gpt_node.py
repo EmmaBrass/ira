@@ -10,6 +10,7 @@ from ira_common.general_gpt import GPT
 
 from ira_interfaces.msg import GptComplete
 from ira_interfaces.msg import SystemState
+from ira_interfaces.msg import CanvasImage
 
 import time, cv2, os
 
@@ -22,15 +23,17 @@ class GPTNode(Node):
 
         self.gpt = GPT()
         self.state_seq = -1
+        
+        self.canvas_image = None
 
         # Initialise publishers
         self.gpt_complete_publisher = self.create_publisher(GptComplete, 'gpt_complete', 10)
 
         # Initialise subscribers
-        self.latest_image_subscription = self.create_subscription(
-            Image,
-            'latest_image', 
-            self.latest_image_callback, 
+        self.canvas_image_subscription = self.create_subscription(
+            CanvasImage,
+            'canvas_image',
+            self.canvas_image_callback, 
             10
         )
         self.system_state_subscription = self.create_subscription(
@@ -44,30 +47,12 @@ class GPTNode(Node):
         self.get_logger().info("GPT node initialised")
         self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
-    def latest_image_callback(self, msg):
+    def canvas_image_callback(self, msg):
         """
-        Callback function for receving image from camera.
-        Loads it in as the latest image.
+        Save the most recent cropped foi image.
         """
-        self.latest_image = bridge.imgmsg_to_cv2(msg, 'bgr8')
-
-        # Ensure the 'images' directory exists one level up
-        parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
-        image_dir = os.path.join(parent_dir, "images")
-        if not os.path.exists(image_dir):
-            self.get_logger().info(f"Directory {image_dir} does not exist. Creating it.")
-            try:
-                os.makedirs(image_dir)
-            except Exception as e:
-                self.get_logger().error(f"Failed to create directory {image_dir}: {str(e)}")
-                return
-
-        # Save the image to the specified path
-        image_path = os.path.join(image_dir, "latest_image.png")
-        try:
-            cv2.imwrite(image_path, self.latest_image)
-        except Exception as e:
-            self.get_logger().error(f"Failed to save image: {str(e)}")
+        self.get_logger().info("In canvas_image_callback")
+        self.canvas_image = self.bridge.imgmsg_to_cv2(msg.image)
 
     def system_state_callback(self, msg):
         """

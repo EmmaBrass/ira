@@ -13,6 +13,7 @@ from ira_common.arm_outline import Outline
 
 from ira_interfaces.msg import ArmComplete
 from ira_interfaces.msg import SystemState
+from ira_interfaces.msg import CanvasImage
 
 import time
 
@@ -27,17 +28,18 @@ class ArmNode(Node):
         self.bridge = CvBridge()
         self.movements = ArmMovements()
         self.outline = Outline()
-        self.cropped_face = None
+        self.before_canvas_image = None # before human mark
+        self.after_canvas_image = None # after humam mark
         self.state_seq = -1
 
         # Initialise publishers
         self.arm_complete_publisher = self.create_publisher(ArmComplete, 'arm_complete', 10) #TODO create a custom message type for this?
 
         # Initialise subscribers
-        self.latest_image_subscription = self.create_subscription(
-            Image,
-            'cropped_face',
-            self.cropped_face_callback, 
+        self.canvas_image_subscription = self.create_subscription(
+            CanvasImage,
+            'canvas_image',
+            self.canvas_image_callback, 
             10
         )
         self.system_state_subscription = self.create_subscription(
@@ -51,16 +53,16 @@ class ArmNode(Node):
         self.get_logger().info("Arm node initialised")
         self.get_logger().info(f"Simulation mode: {self.sim_mode}")
 
-        #TODO subscribe to a topic with the cropped face image;
-        # on this node, do the processing for turning that into and outline and then 
-        # into a path for the robot arm to follow.
 
-    def cropped_face_callback(self, msg): #TODO change to most recent pic of the canvas ?
+    def canvas_image_callback(self, msg):
         """
         Save the most recent cropped foi image.
         """
-        self.get_logger().info("In cropped_face_callback")
-        self.cropped_face = self.bridge.imgmsg_to_cv2(msg)
+        self.get_logger().info("In canvas_image_callback")
+        if msg.type == "before":
+            self.before_canvas_image = self.bridge.imgmsg_to_cv2(msg.image)
+        if msg.type == "after":
+            self.after_canvas_image = self.bridge.imgmsg_to_cv2(msg.image)
 
     def system_state_callback(self, msg):
         """
@@ -71,37 +73,26 @@ class ArmNode(Node):
             if self.sim_mode:
                 self.arm_complete(msg.seq)
             else:
-                if msg.state == 'scanning':
-                    self.movements.scan()
+                if msg.state == 'startup':
                     self.arm_complete(msg.seq)
-                if msg.state == 'found_noone':
+                if msg.state == 'your_turn':
+                    self.movements.lift_up()
                     self.arm_complete(msg.seq)
-                if msg.state == 'found_unknown':
+                if msg.state == 'looking':
+                    self.movements.look_at_canvas()
                     self.arm_complete(msg.seq)
-                if msg.state == 'found_known':
+                if msg.state == 'comment':
+                    self.movements.look_forward()
                     self.arm_complete(msg.seq)
-                if msg.state == 'say_painted_recently':
+                if msg.state == 'my_turn':
+                    self.movements.paint_abstract_mark()
                     self.arm_complete(msg.seq)
-                if msg.state == 'too_far':
-                    self.arm_complete(msg.seq)
-                if msg.state == 'interaction_unknown':
-                    self.arm_complete(msg.seq)
-                if msg.state == 'interaction_known':
-                    self.arm_complete(msg.seq)
-                if msg.state == 'interaction_known_recent':
-                    self.arm_complete(msg.seq)
-                if msg.state == 'disappeared':
-                    self.arm_complete(msg.seq)
-                if msg.state == 'interaction_returned':
-                    self.arm_complete(msg.seq)
-                if msg.state == 'gone':
-                    self.arm_complete(msg.seq)
-                if msg.state == 'painting':
-                    path_points, image_x, image_y = self.outline.find_contours_coordinates(self.cropped_face)
-                    self.movements.paint_image(path_points, image_x, image_y)
+                if msg.state == 'ask_done':
                     self.arm_complete(msg.seq)
                 if msg.state == 'completed':
+                    self.movements.acknowledge()
                     self.arm_complete(msg.seq)
+
 
     def arm_complete(self, seq):
         self.get_logger().info("In arm_complete")

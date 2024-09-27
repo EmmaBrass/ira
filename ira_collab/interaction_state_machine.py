@@ -5,24 +5,27 @@ from transitions import Machine
 
 class InterationStateMachine():
     
-    states = ['startup', 'your_turn', 'looking', 'comment', 'my_turn', 'ask_done', 'completed']
+    states = ['startup_ready', 'startup_pic', 'your_turn', 'your_turn_pic', 'comment', 'my_turn', 'my_turn_pic' 'ask_done', 'completed']
     
     transitions = [
-        { 'trigger': 'to_startup', 'source': 'completed', 'dest': 'startup'},
+        { 'trigger': 'to_startup_ready', 'source': 'completed', 'dest': 'startup_ready'},
 
-        { 'trigger': 'to_your_turn', 'source': 'startup', 'dest': 'your_turn'},
+        { 'trigger': 'to_startup_pic', 'source': 'startup_ready', 'dest': 'startup_pic'},
 
-        { 'trigger': 'to_looking', 'source': 'your_turn', 'dest': 'looking' },
+        { 'trigger': 'to_your_turn', 'source': 'startup_pic', 'dest': 'your_turn'},
 
-        { 'trigger': 'to_comment', 'source': 'looking', 'dest': 'comment' },
+        { 'trigger': 'to_your_turn_pic', 'source': 'your_turn', 'dest': 'your_turn_pic' },
+
+        { 'trigger': 'to_comment', 'source': 'your_turn_pic', 'dest': 'comment' },
 
         { 'trigger': 'to_my_turn', 'source': 'comment', 'dest': 'my_turn' },
 
-        { 'trigger': 'to_ask_done', 'source': 'my_turn', 'dest': 'ask_done' },
+        { 'trigger': 'to_my_turn_pic', 'source': 'my_turn', 'dest': 'my_turn_pic' },
 
-        { 'trigger': 'to_your_turn', 'source': 'my_turn', 'dest': 'your_turn' },
+        { 'trigger': 'to_your_turn', 'source': 'my_turn_pic', 'dest': 'your_turn' },
+        { 'trigger': 'to_ask_done', 'source': 'my_turn_pic', 'dest': 'ask_done' },
+        
         { 'trigger': 'to_your_turn', 'source': 'ask_done', 'dest': 'your_turn' },
-
         { 'trigger': 'to_completed', 'source': 'ask_done', 'dest': 'completed' }
     ]
 
