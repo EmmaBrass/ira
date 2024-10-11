@@ -2,7 +2,7 @@ import os
 from setuptools import find_packages, setup
 from glob import glob
 
-package_name = 'ira_collab'
+package_name = 'ira'
 
 setup(
     name=package_name,
@@ -23,11 +23,11 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        	'arm_node = ira_collab.arm_node:main',
-        	'camera_node = ira_collab.camera_node:main',
-            'eye_node = ira_collab.eye_node:main',
-            'gpt_node = ira_collab.gpt_node:main',
-            'interaction_node = ira_collab.interaction_node:main',
+        	'arm_node = ira.arm_node:main',
+        	'camera_node = ira.camera_node:main',
+            'eye_node = ira.eye_node:main',
+            'gpt_node = ira.gpt_node:main',
+            'interaction_node = ira.interaction_node:main',
         ],
     },
 )

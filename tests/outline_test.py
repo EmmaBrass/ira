@@ -28,4 +28,6 @@ frame_copy = frame.copy()
 coordinates, image_x, image_y = outliner.find_contours_coordinates(frame, False)
 
 # PAINT the image
-movements.paint_image(coordinates, image_x, image_y)
+#movements.paint_image(coordinates, image_x, image_y)
+
+movements.laser_image(coorinates, image_x, image_y)

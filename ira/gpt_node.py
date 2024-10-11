@@ -20,8 +20,11 @@ class GPTNode(Node):
         self.declare_parameter('sim', False)
         self.sim_mode = self.get_parameter('sim').get_parameter_value().bool_value
 
-        self.gpt = GPT()
+        self.gpt = GPT(collab=False)
         self.state_seq = -1
+
+        # To track whether still painting in my_turn
+        self.still_painting = False
 
         # Initialise publishers
         self.gpt_complete_publisher = self.create_publisher(GptComplete, 'gpt_complete', 10)
@@ -73,7 +76,7 @@ class GPTNode(Node):
         """
         Callback function for the system state.
         """
-        if msg.seq > self.state_seq:
+        if msg.seq > self.state_seq or self.still_painting == True:
             self.state_seq = msg.seq
             if msg.state == 'scanning':
                 self.get_logger().info("GPT received scanning state")
@@ -84,9 +87,11 @@ class GPTNode(Node):
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_unknown':
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_unknown>")
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <comment>. The image path is: """) #TODO image path
                 self.gpt_complete(msg.seq)
             elif msg.state == 'found_known':
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <found_known>")
+                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <comment>. The image path is: """) # TODO image path
                 self.gpt_complete(msg.seq)
             elif msg.state == 'say_painted_recently':
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <say_painted_recently>")
@@ -97,14 +102,18 @@ class GPTNode(Node):
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
             elif msg.state == 'painting':
-                time.sleep(20)
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <painting>")
-                self.get_logger().info(response)
-                time.sleep(30)
-                response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <continue_painting>")
-                self.get_logger().info(response)
-                self.gpt_complete(msg.seq)
+                if self.still_painting == False:
+                    time.sleep(20)
+                    response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <painting>")
+                    self.get_logger().info(response)
+                    self.still_painting = True
+                elif self.still_painting == True:
+                    time.sleep(5)
+                    response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <continue_painting>")
+                    self.get_logger().info(response)
+                    self.gpt_complete(msg.seq)
             elif msg.state == 'completed':
+                self.still_painting = False
                 response = self.gpt.add_user_message_and_get_response_and_speak("The command is: <completed>")
                 self.get_logger().info(response)
                 self.gpt_complete(msg.seq)
