@@ -16,18 +16,21 @@ print("Taking picture")
 for i in range(10):
     ret, frame = cam.read() 
 
-cv2.imshow('Image Window', frame)
+print("frame shape!!!")
+print(frame.shape)
+cropped_frame = frame[0:480,100:580]
+
+cv2.imshow('Image Window', cropped_frame)
 cv2.waitKey(0) 
 cv2.destroyAllWindows()
 
-frame_copy = frame.copy()
+frame_copy = cropped_frame.copy()
 
 #frame = cv2.imread("./images/beard_test.jpeg")
 
 # Make the outline from the original image
-coordinates, image_x, image_y = outliner.find_contours_coordinates(frame, False)
+coordinates, image_x, image_y = outliner.find_contours_coordinates(cropped_frame, False)
 
 # PAINT the image
 #movements.paint_image(coordinates, image_x, image_y)
-
-movements.laser_image(coorinates, image_x, image_y)
+movements.laser_image(coordinates, image_x, image_y)
