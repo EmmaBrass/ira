@@ -4,3 +4,5 @@ This repository contains code for an interactive, creative robotic arm system fo
 
 The system has capabilities for vision using a USB camera, ChatGPT integration, and face-tracking animatronic eyes. The arm can paint on 2D surfaces.
 
+In this version of the project, the robot 'looks' at the human user and then paints an outline of their face.
+
